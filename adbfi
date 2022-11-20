@@ -1,0 +1,21 @@
+#!/system/xbin/bash
+
+if [[ -f /sdcard/.adfi ]]; then
+	. /sdcard/.adfi
+fi
+
+adata=$(adb devices)
+sheesh=$(grep "$EX" <<<"$adata")
+
+if [[ $EX == "" || $sheesh == "" || $(grep -o offline <<<"$sheesh") == "offline" ]]; then
+	adbfi_connect || export EX=""
+	. /sdcard/.adfi
+fi
+
+if [[ "$@" != "" ]]; then
+	if [[ "$1" == "sync" ]]; then
+		adbfi_sync
+	else
+		adb -s $EX "$@"
+	fi
+fi

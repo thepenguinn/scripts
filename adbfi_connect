@@ -6,6 +6,10 @@ main_extra_len=0
 tried=0
 unset chosen
 
+hhh () {
+	echo 
+}
+
 stty -echo
 printf "\033[?25l"
 

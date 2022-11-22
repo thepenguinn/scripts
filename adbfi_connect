@@ -3,8 +3,8 @@
 ipaddr="192.168.43.35"
 portid="Not Specified"
 main_extra_len=0
-tried=0
 unset chosen
+unset prcode
 
 stty -echo
 printf "\033[?25l"
@@ -52,11 +52,9 @@ get_port () {
 		if [[ $chosen =~ ^[0-9]{5}$ ]]; then
 			portid=$chosen
 			printf "\033[8F\033[0J"
-			tried=0
 			print_info
 		elif [[ $chosen == "x" ]]; then
 			printf "\033[3F\033[0J"
-			tried=1
 		else
 			invalid_port
 			read_input
@@ -81,11 +79,9 @@ get_ip () {
 		if [[ $chosen =~ ^([0-9]{1,3}[\.]){3}[0-9]{1,3}$ ]]; then
 			ipaddr=$chosen
 			printf "\033[8F\033[0J"
-			tried=0
 			print_info
 		elif [[ $chosen == "x" ]]; then
 			printf "\033[3F\033[0J"
-			tried=1
 		else
 			invalid_ip
 			read_input
@@ -95,11 +91,40 @@ get_ip () {
 	validate
 }
 
+invalid_code () {
+	printf "\n\033[31;1m Invalid Pairing Code. \033[0mSould be 6 digit long numeral."
+	sleep 2
+	printf "\033[2F\033[12C\033[0J"
+}
+
+get_code () {
+	printf "\033[0m  \033[1mx \033[0m-─ \033[30;1mGo Back\n\n"
+	printf "\033[0m "
+	printf "[\033[1mPAIRING CODE\033[0m]: "
+	read_input
+	validate () {
+		if [[ $chosen =~ ^[0-9]{6}$ ]]; then
+			prcode=$chosen
+			printf "\033[8F\033[0J"
+			print_info
+			return 0
+		elif [[ $chosen == "x" ]]; then
+			printf "\033[3F\033[0J"
+			return 1
+		else
+			invalid_code
+			read_input
+			validate
+		fi
+	}
+	validate
+}
+
 connect_device () {
 	printf "\033[35;1m Connecting to device...\n"
-	connect_log=$(adb connect $ipaddr:$portid 2>/dev/null)
-	reason=$(awk -F":" '{print $3}' <<<"$connect_log")
-	if [[ $(grep -o "connected" <<<"$connect_log") == connected ]]; then
+	local connect_log=$(adb connect $ipaddr:$portid 2>/dev/null)
+	local reason=$(awk -F":" '{print $3}' <<<"$connect_log")
+	if grep -o "connected" <<<"$connect_log" > /dev/null; then
 		printf "\033[35;1m Connected to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid"
 		echo "export EX=\"$ipaddr:$portid\"" > /sdcard/.adfi
 		exit 0
@@ -111,20 +136,29 @@ connect_device () {
 	fi
 }
 
-main () {
-	if [[ $tried == 0 && $portid != "Not Specified" ]]; then
-		connect_device
+pair_device () {
+	printf "\033[35;1m Pairing device...\n"
+	connect_log=$(adb pair $ipaddr:$portid $prcode 2>/dev/null)
+	reason=$(awk -F":" '{print $2}' <<<"$connect_log")
+	if grep -o "Successfully paired" <<<"$connect_log" > /dev/null; then
+		printf "\033[35;1m Paired to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid"
 	else
-		tried=1
+		printf "\n\033[31;1m Failed to pair to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid\n"
+		printf " ~>$reason\n"
+		sleep 2
+		printf "\033[4F\033[0J"
 	fi
+}
+
+main () {
 	printf "\033[0m  \033[1mi \033[0m-─ \033[1mChange Ip\n"
 	printf "\033[0m  \033[1mp \033[0m-─ \033[1mChange Port\n"
-	printf "\033[0m  \033[1md \033[0m-─ \033[1mPair Device\n"
 	printf "\033[0m  \033[1mx \033[0m-─ \033[30;1mExit\n"
 
 	if [[ ! $portid == "Not Specified" ]]; then
+		printf "\n\033[0m  \033[36;1ml \033[0m-─ \033[36;1mPair Device\n"
 		printf "\033[0m  \033[35;1mc \033[0m-─ \033[35;1mConnect\n\n"
-		main_extra_len=1
+		main_extra_len=3
 	else
 		printf "\n"
 	fi
@@ -144,21 +178,24 @@ main () {
 				get_port
 				main
 				;;
-			d)
-				printf "\033[$((5+main_extra_len))F\033[0J"
-				[[ $portid = "Not Specified" ]] && get_port
-				adb pair $ipaddr:$portid 2>/dev/null
-				main
-				;;
 			x)
 				exit 1
 				;;
 			*)
-				if [[ $portid != "Not Specified" && $chosen == "c" ]]; then
-					printf "\033[$((5+main_extra_len))F\033[0J"
-					connect_device
-					tried=1
-					main
+				if [[ $portid != "Not Specified" ]]; then
+					case $chosen in
+						c)
+							printf "\033[$((5+main_extra_len))F\033[0J"
+							connect_device
+							main
+							;;
+						l)
+							printf "\033[$((5+main_extra_len))F\033[0J"
+							[[ $portid = "Not Specified" ]] && get_port
+							get_code && pair_device
+							main
+							;;
+					esac
 				else
 					invalid_input
 					read_input
@@ -168,10 +205,6 @@ main () {
 		esac
 	}
 	validate
-}
-
-pair_device() {
-
 }
 
 for i in "$@"
@@ -199,7 +232,6 @@ do
 	else
 		skiparg=0
 	fi
-
 done
 
 print_info
@@ -207,4 +239,3 @@ if [[ $portid == "Not Specified" ]]; then
 	get_port
 fi
 main
-

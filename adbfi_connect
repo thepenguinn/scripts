@@ -142,6 +142,7 @@ pair_device () {
 	reason=$(awk -F":" '{print $2}' <<<"$connect_log")
 	if grep -o "Successfully paired" <<<"$connect_log" > /dev/null; then
 		printf "\033[35;1m Paired to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid"
+		exit 0
 	else
 		printf "\n\033[31;1m Failed to pair to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid\n"
 		printf " ~>$reason\n"

@@ -1,0 +1,60 @@
+#!/bin/bash
+
+unset dirs_for_syllabus
+unset dirs_for_notes
+unset gen_type
+
+check_pre_comp_notes () {
+	echo "wip"
+}
+
+check_pre_comp_syllabus () {
+	echo "wip"
+}
+
+gen_cover_img () {
+	echo "wip"
+}
+
+gen_notes () {
+	while read -r dir
+	do
+		echo $dir
+	done <<<"$@"
+}
+
+gen_syllabus () {
+	while read -r dir
+	do
+		echo $dir
+	done <<<"$@"
+}
+
+for arg in "$@"
+do
+	case $arg in 
+		-s)
+			gen_type=syllabus
+			;;
+		-n)
+			gen_type=notes
+			;;
+		-sn|-ns)
+			gen_type=""
+			;;
+		*)
+			[[ -d $arg ]] || continue
+			if [[ $gen_type == "syllabus" ]]; then
+				dirs_for_syllabus+="${arg}"$'\n'
+			elif [[ $gen_type == "notes" ]]; then
+				dirs_for_notes+="${arg}"$'\n'
+			elif [[ $gen_type == "" ]]; then
+				dirs_for_syllabus+="${arg}"$'\n'
+				dirs_for_notes+="${arg}"$'\n'
+			fi
+			;;
+	esac
+done
+
+gen_syllabus "${dirs_for_syllabus}"
+gen_notes "${dirs_for_notes}"

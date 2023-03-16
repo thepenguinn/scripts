@@ -4,12 +4,21 @@ unset dirs_for_syllabus
 unset dirs_for_notes
 unset gen_type
 
+check_indexfile () {
+	local indexf="$(readlink -e $1)"
+	if [[ -f  $indexf/index.norg ]]; then
+		return 0
+	else
+		printf "Couldn't find index.norg in the directory: \"$indexf/\" \nExiting...\n"
+		exit 1
+	fi
+}
+
 check_pre_comp_notes () {
 	echo "wip"
 }
 
 check_pre_comp_syllabus () {
-	echo "wip"
 }
 
 gen_cover_img () {

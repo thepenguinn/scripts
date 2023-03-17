@@ -3,6 +3,7 @@
 unset dirs_for_syllabus
 unset dirs_for_notes
 unset gen_type
+unset modified_time_new
 
 check_indexfile () {
 	local indexf="$(readlink -e $1)"
@@ -15,10 +16,34 @@ check_indexfile () {
 }
 
 check_pre_comp_notes () {
-	echo "wip"
+
+	local nmodtime
+	local lmodt_file
+
+	lmodt_file="${1%/*}/ebook/lmodt_$(basename $1 | sed "s/.norg$//")"
+	nmodtime=$(stat --printf "%Y\n" $1)
+	if [[ -f $lmodt_file && $nmodtime != $(cat $lmodt_file) ]]; then
+		return 0
+	else
+		modified_time_new+="$lmodt_file@$nmodtime"$'\n'
+		return 1
+	fi
+
 }
 
 check_pre_comp_syllabus () {
+
+	local imodtime
+
+	check_indexfile "$1"
+
+	imodtime=$(stat --printf "%Y\n" $1/syllabus*.norg $1/index.norg | sort | tail -n 1)
+	if [[ -f $1/ebook/lmodt_syllabus && $imodtime != $(cat $1/ebook/lmodt_syllabus) ]]; then
+		return 0
+	else
+		modified_time_new+="$1/ebook/lmodt_syllabus@$imodtime"$'\n'
+		return 1
+	fi
 }
 
 gen_cover_img () {
@@ -35,7 +60,6 @@ gen_notes () {
 gen_syllabus () {
 	while read -r dir
 	do
-		echo $dir
 	done <<<"$@"
 }
 

@@ -6,8 +6,8 @@ unset gen_type
 unset modified_time_new
 
 check_indexfile () {
-	local indexf="$(readlink -e $1)"
-	if [[ -f  $indexf/index.norg ]]; then
+	local indexf="$(readlink -e "$1")"
+	if [[ -f  "$indexf/index.norg" ]]; then
 		return 0
 	else
 		printf "Couldn't find index.norg in the directory: \"$indexf/\" \nExiting...\n"
@@ -20,9 +20,9 @@ check_pre_comp_notes () {
 	local nmodtime
 	local lmodt_file
 
-	lmodt_file="${1%/*}/ebook/lmodt_$(basename $1 | sed "s/.norg$//")"
-	nmodtime=$(stat --printf "%Y\n" $1)
-	if [[ -f $lmodt_file && $nmodtime != $(cat $lmodt_file) ]]; then
+	lmodt_file="${1%/*}/ebook/lmodt_$(basename "$1" | sed "s/.norg$//")"
+	nmodtime=$(stat --printf "%Y\n" "$1")
+	if [[ -f "$lmodt_file" && "$nmodtime" -le $(cat "$lmodt_file") ]]; then
 		return 0
 	else
 		modified_time_new+="$lmodt_file@$nmodtime"$'\n'
@@ -33,12 +33,19 @@ check_pre_comp_notes () {
 
 check_pre_comp_syllabus () {
 
-	local imodtime
+	local imodtime=""
+	local norgfiles=$(find "$1" -iname syllabus*.norg)
+	norgfiles+=$'\n'"$1/index.norg"
 
-	check_indexfile "$1"
 
-	imodtime=$(stat --printf "%Y\n" $1/syllabus*.norg $1/index.norg | sort | tail -n 1)
-	if [[ -f $1/ebook/lmodt_syllabus && $imodtime != $(cat $1/ebook/lmodt_syllabus) ]]; then
+	while read -r file
+	do
+		imodtime+=$(stat --printf "%Y\n" "$file")$'\n'
+	done <<<"$norgfiles"
+
+	imodtime=$(sort <<<"$imodtime" | tail -n 1)
+
+	if [[ -f "$1/ebook/lmodt_syllabus" && $imodtime -le $(cat "$1/ebook/lmodt_syllabus") ]]; then
 		return 0
 	else
 		modified_time_new+="$1/ebook/lmodt_syllabus@$imodtime"$'\n'
@@ -50,17 +57,21 @@ gen_cover_img () {
 	echo "wip"
 }
 
-gen_notes () {
+notes_ebook () {
 	while read -r dir
 	do
 		echo $dir
 	done <<<"$@"
 }
 
-gen_syllabus () {
-	while read -r dir
-	do
-	done <<<"$@"
+gen_notes_ebook () {
+	echo hai
+}
+
+gen_syllabus_ebook () {
+}
+
+syllabus_ebook () {
 }
 
 for arg in "$@"
@@ -89,5 +100,5 @@ do
 	esac
 done
 
-gen_syllabus "${dirs_for_syllabus}"
-gen_notes "${dirs_for_notes}"
+syllabus_ebook "${dirs_for_syllabus}"
+#notes_ebook "${dirs_for_notes}"

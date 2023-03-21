@@ -53,8 +53,41 @@ check_pre_comp_syllabus () {
 	fi
 }
 
+check_pre_comp_cover () {
+
+	if [[ -f "${1}.png" && -f "${1}_title" ]]; then
+		if [[ $2 == $(cat "${1}_title") ]]; then
+			return 0
+		fi
+		modified_time_new+="${1}_title@$2"$'\n'
+	fi
+	return 1
+}
+
 gen_cover_img () {
-	echo "wip"
+
+	# First Arg --> Path to the norg file with the metadata for title
+	# Second Arg --> Subtitle
+
+	local dir=${1%/*}
+	local tmpdir="$TMPDIR/epubconv"
+	local font="$HOME/.fonts/FiraCode.ttf"
+	local title
+
+	mkdir "$tmpdir" > /dev/null 2>&1
+
+	title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
+
+	if ! check_pre_comp_cover "$dir/ebook/cover_$2" "$title"; then
+
+		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
+		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
+		convert -size 800x1080 xc:white "$tmpdir/back.png"
+		composite -gravity center "$tmpdir/title.png" "$tmpdir/back.png" "$tmpdir/first.png"
+		composite -gravity center "$tmpdir/subtitle.png" "$tmpdir/first.png" "$dir/ebook/cover_$2.png"
+
+		modified_time_new+="$dir/ebook/cover_$2@$lmodtime"$'\n'
+	fi
 }
 
 notes_ebook () {

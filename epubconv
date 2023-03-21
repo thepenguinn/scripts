@@ -31,7 +31,7 @@ check_pre_comp_notes () {
 
 }
 
-check_pre_comp_syllabus () {
+check_pre_comp_syllabus_markdown () {
 
 	local imodtime=""
 	local norgfiles=$(find "$1" -iname syllabus*.norg)
@@ -68,6 +68,7 @@ gen_cover_img () {
 
 	# First Arg --> Path to the norg file with the metadata for title
 	# Second Arg --> Subtitle
+	# Returns absoulute path to cover image.
 
 	local dir=${1%/*}
 	local tmpdir="$TMPDIR/epubconv"
@@ -76,9 +77,10 @@ gen_cover_img () {
 
 	mkdir "$tmpdir" > /dev/null 2>&1
 
-	title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
 
 	if ! check_pre_comp_cover "$dir/ebook/cover_$2" "$title"; then
+
+		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
 
 		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
 		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
@@ -88,6 +90,8 @@ gen_cover_img () {
 
 		modified_time_new+="$dir/ebook/cover_$2@$lmodtime"$'\n'
 	fi
+
+	readlink -e "$dir/ebook/cover_$2.png" 2> /dev/null
 }
 
 notes_ebook () {
@@ -101,10 +105,63 @@ gen_notes_ebook () {
 	echo hai
 }
 
-gen_syllabus_ebook () {
+gen_syllabus_markdown () {
+
+	# First Arg --> Path to the directory that wants to be converted
+
+	local dir=$(sed "s; ;\\\ ;" <<<"$1")
+
+	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q" "$1/../index.norg" > /dev/null 2>&1
+
+	[[ -d "$1/ebook" ]] || exit 1
+}
+
+gen_syllabus_epub () {
+
+	# First Arg --> Path to the directory that wants to be converted
+
+	local cover_img
+	local md_files
+	local epub_name
+
+	epub_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
+
+	cover_img=$(gen_cover_img "$1/index.norg" "syllabus")
+
+	md_files=$(find "$1/ebook" -iname syllabus*.md | sort)
+
+	sed -n "1,/---/p" "$1/ebook/index.md" > "$1/ebook/ebook.md"
+
+	while read -r file
+	do
+		sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
+	done <<<"$md_files"
+
+	pandoc --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
+
 }
 
 syllabus_ebook () {
+
+	local title
+
+	while read -r dir
+	do
+
+		[[ -z $dir ]] && continue
+
+		check_indexfile "$dir"
+
+		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$dir/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
+
+		if ! check_pre_comp_syllabus_markdown "$dir" ; then
+			gen_syllabus_markdown "$dir"
+			gen_syllabus_epub "$dir"
+		elif [[ ! -f "$dir/$title.epub" ]]; then
+			gen_syllabus_epub "$dir"
+		fi
+
+	done <<<"$@"
 }
 
 for arg in "$@"

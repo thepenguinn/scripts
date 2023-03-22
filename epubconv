@@ -3,7 +3,8 @@
 unset dirs_for_syllabus
 unset dirs_for_notes
 unset gen_type
-unset modified_time_new
+unset modified_cover_title
+unset modified_time_norg
 
 check_indexfile () {
 	local indexf="$(readlink -e "$1")"
@@ -13,6 +14,22 @@ check_indexfile () {
 		printf "Couldn't find index.norg in the directory: \"$indexf/\" \nExiting...\n"
 		exit 1
 	fi
+}
+
+write_new_modt () {
+
+	local path
+	local time
+	local line="${!1}"
+
+	[[ -z $line ]] && return 1
+
+	path=${line%@*}
+	time=${line#*@}
+	echo "$time" > "$path"
+
+	unset "$1"
+
 }
 
 check_pre_comp_notes () {
@@ -25,7 +42,7 @@ check_pre_comp_notes () {
 	if [[ -f "$lmodt_file" && "$nmodtime" -le $(cat "$lmodt_file") ]]; then
 		return 0
 	else
-		modified_time_new+="$lmodt_file@$nmodtime"$'\n'
+		modified_time_norg="$lmodt_file@$nmodtime"
 		return 1
 	fi
 
@@ -48,7 +65,7 @@ check_pre_comp_syllabus_markdown () {
 	if [[ -f "$1/ebook/lmodt_syllabus" && $imodtime -le $(cat "$1/ebook/lmodt_syllabus") ]]; then
 		return 0
 	else
-		modified_time_new+="$1/ebook/lmodt_syllabus@$imodtime"$'\n'
+		modified_time_norg="$1/ebook/lmodt_syllabus@$imodtime"
 		return 1
 	fi
 }
@@ -59,8 +76,8 @@ check_pre_comp_cover () {
 		if [[ $2 == $(cat "${1}_title") ]]; then
 			return 0
 		fi
-		modified_time_new+="${1}_title@$2"$'\n'
 	fi
+	modified_cover_title="${1}_title@$2"
 	return 1
 }
 
@@ -68,7 +85,6 @@ gen_cover_img () {
 
 	# First Arg --> Path to the norg file with the metadata for title
 	# Second Arg --> Subtitle
-	# Returns absoulute path to cover image.
 
 	local dir=${1%/*}
 	local tmpdir="$TMPDIR/epubconv"
@@ -77,10 +93,9 @@ gen_cover_img () {
 
 	mkdir "$tmpdir" > /dev/null 2>&1
 
+	title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
 
 	if ! check_pre_comp_cover "$dir/ebook/cover_$2" "$title"; then
-
-		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
 
 		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
 		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
@@ -88,10 +103,10 @@ gen_cover_img () {
 		composite -gravity center "$tmpdir/title.png" "$tmpdir/back.png" "$tmpdir/first.png"
 		composite -gravity center "$tmpdir/subtitle.png" "$tmpdir/first.png" "$dir/ebook/cover_$2.png"
 
-		modified_time_new+="$dir/ebook/cover_$2@$lmodtime"$'\n'
+		write_new_modt "modified_cover_title"
 	fi
 
-	readlink -e "$dir/ebook/cover_$2.png" 2> /dev/null
+
 }
 
 notes_ebook () {
@@ -126,10 +141,10 @@ gen_syllabus_epub () {
 
 	epub_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
-	cover_img=$(gen_cover_img "$1/index.norg" "syllabus")
+	gen_cover_img "$1/index.norg" "syllabus"
+	cover_img="$1/ebook/cover_syllabus.png"
 
 	md_files=$(find "$1/ebook" -iname syllabus*.md | sort)
-
 	sed -n "1,/---/p" "$1/ebook/index.md" > "$1/ebook/ebook.md"
 
 	while read -r file
@@ -157,10 +172,10 @@ syllabus_ebook () {
 		if ! check_pre_comp_syllabus_markdown "$dir" ; then
 			gen_syllabus_markdown "$dir"
 			gen_syllabus_epub "$dir"
-		elif [[ ! -f "$dir/$title.epub" ]]; then
+		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
 			gen_syllabus_epub "$dir"
 		fi
-
+		write_new_modt "modified_time_norg"
 	done <<<"$@"
 }
 

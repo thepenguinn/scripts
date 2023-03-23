@@ -6,14 +6,22 @@ unset gen_type
 unset modified_cover_title
 unset modified_time_norg
 
-check_indexfile () {
-	local indexf="$(readlink -e "$1")"
-	if [[ -f  "$indexf/index.norg" ]]; then
-		return 0
+check_metadata () {
+
+	# First Arg --> path to the norg file
+
+	local meta
+
+	if [[ -f  "$1" ]]; then
+		meta=$(sed -n "0,/@end/p" "$1")
+		if grep "@document.meta" <<<"$meta" > /dev/null 2>&1 ; then
+			return 0
+		fi
+		printf "Couldn't extract metadate from the norg file: \""$1"\"\nExiting...\n"
 	else
-		printf "Couldn't find index.norg in the directory: \"$indexf/\" \nExiting...\n"
-		exit 1
+		printf "Couldn't find norg file: \"$1/\"\nExiting...\n"
 	fi
+	exit 1
 }
 
 write_new_modt () {
@@ -110,9 +118,18 @@ gen_cover_img () {
 }
 
 notes_ebook () {
+
+	local norg_files
+
 	while read -r dir
 	do
-		echo $dir
+		[[ -z $dir ]] && continue
+		norg_files=$(find "$dir" -iname notes*.norg)
+		while read -r file
+		do
+			echo "$file"
+		done <<<"$norg_files"
+
 	done <<<"$@"
 }
 
@@ -165,7 +182,7 @@ syllabus_ebook () {
 
 		[[ -z $dir ]] && continue
 
-		check_indexfile "$dir"
+		check_metadata "$dir/index.norg"
 
 		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$dir/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
@@ -205,5 +222,5 @@ do
 	esac
 done
 
-syllabus_ebook "${dirs_for_syllabus}"
-#notes_ebook "${dirs_for_notes}"
+#syllabus_ebook "${dirs_for_syllabus}"
+notes_ebook "${dirs_for_notes}"

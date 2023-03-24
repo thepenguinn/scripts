@@ -28,13 +28,14 @@ write_new_modt () {
 
 	local path
 	local time
-	local line="${!1}"
 
-	[[ -z $line ]] && return 1
-
-	path=${line%@*}
-	time=${line#*@}
-	echo "$time" > "$path"
+	while read -r line
+	do
+		[[ -z $line ]] && continue
+		path=${line%@*}
+		time=${line#*@}
+		echo "$time" > "$path"
+	done <<<"${!1}"
 
 	unset "$1"
 
@@ -106,9 +107,6 @@ update_lmodt () {
 	done <<<"$nf_notes"
 
 }
-
-update_lmodt "$1"
-exit
 
 gen_cover_img () {
 

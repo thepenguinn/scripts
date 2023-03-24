@@ -17,7 +17,7 @@ check_metadata () {
 		if grep "@document.meta" <<<"$meta" > /dev/null 2>&1 ; then
 			return 0
 		fi
-		printf "Couldn't extract metadate from the norg file: \""$1"\"\nExiting...\n"
+		printf "Couldn't extract metadata from the norg file: \""$1"\"\nExiting...\n"
 	else
 		printf "Couldn't find norg file: \"$1/\"\nExiting...\n"
 	fi
@@ -40,28 +40,26 @@ write_new_modt () {
 
 }
 
+
 check_pre_comp_notes () {
 
 	local nmodtime
 	local lmodt_file
 
-	lmodt_file="${1%/*}/ebook/lmodt_$(basename "$1" | sed "s/.norg$//")"
+	lmodt_file="${1%/*}/ebook/lmodt_$(basename "${1%.*}")"
 	nmodtime=$(stat --printf "%Y\n" "$1")
 	if [[ -f "$lmodt_file" && "$nmodtime" -le $(cat "$lmodt_file") ]]; then
 		return 0
-	else
-		modified_time_norg="$lmodt_file@$nmodtime"
-		return 1
 	fi
+	modified_time_norg+="$lmodt_file@$nmodtime"$'\n'
+	return 1
 
 }
 
 check_pre_comp_syllabus_markdown () {
 
 	local imodtime=""
-	local norgfiles=$(find "$1" -iname syllabus*.norg)
-	norgfiles+=$'\n'"$1/index.norg"
-
+	local norgfiles=$(find "$1" \( -iname syllabus*.norg -o -iname index.norg \))
 
 	while read -r file
 	do
@@ -72,10 +70,9 @@ check_pre_comp_syllabus_markdown () {
 
 	if [[ -f "$1/ebook/lmodt_syllabus" && $imodtime -le $(cat "$1/ebook/lmodt_syllabus") ]]; then
 		return 0
-	else
-		modified_time_norg="$1/ebook/lmodt_syllabus@$imodtime"
-		return 1
 	fi
+	modified_time_norg+="$1/ebook/lmodt_syllabus@$imodtime"$'\n'
+	return 1
 }
 
 check_pre_comp_cover () {
@@ -88,6 +85,30 @@ check_pre_comp_cover () {
 	modified_cover_title="${1}_title@$2"
 	return 1
 }
+
+update_lmodt () {
+
+	# First Arg --> directory that last converted to markdown
+	
+	local nf_notes
+
+	if ! grep "lmodt_syllabus" <<<"$modified_time_norg" > /dev/null 2>&1 ; then
+		check_pre_comp_syllabus_markdown "$1"
+	fi
+
+	nf_notes=$(find "$1" -type f -iname notes*.norg)
+
+	while read -r file
+	do
+		if ! grep "lmodt_$(basename "${file%.*}")" <<<"$modified_time_norg" > /dev/null 2>&1 ; then
+			check_pre_comp_notes "$file"
+		fi
+	done <<<"$nf_notes"
+
+}
+
+update_lmodt "$1"
+exit
 
 gen_cover_img () {
 
@@ -117,6 +138,23 @@ gen_cover_img () {
 
 }
 
+gen_markdown () {
+
+	# First Arg --> Path to the directory that wants to be converted
+
+	local dir=$(sed "s; ;\\\ ;" <<<"$1")
+
+	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q" "$1/../index.norg" > /dev/null 2>&1
+
+	[[ -d "$1/ebook" ]] || exit 1
+
+
+}
+
+gen_notes_ebook () {
+	echo hai
+}
+
 notes_ebook () {
 
 	local norg_files
@@ -127,26 +165,16 @@ notes_ebook () {
 		norg_files=$(find "$dir" -iname notes*.norg)
 		while read -r file
 		do
-			echo "$file"
+			check_metadata "$file"
+			if ! check_pre_comp_notes "$file" ; then
+				gen_markdown "$dir"
+			fi
+
 		done <<<"$norg_files"
 
 	done <<<"$@"
 }
 
-gen_notes_ebook () {
-	echo hai
-}
-
-gen_syllabus_markdown () {
-
-	# First Arg --> Path to the directory that wants to be converted
-
-	local dir=$(sed "s; ;\\\ ;" <<<"$1")
-
-	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q" "$1/../index.norg" > /dev/null 2>&1
-
-	[[ -d "$1/ebook" ]] || exit 1
-}
 
 gen_syllabus_epub () {
 
@@ -187,7 +215,7 @@ syllabus_ebook () {
 		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$dir/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
 		if ! check_pre_comp_syllabus_markdown "$dir" ; then
-			gen_syllabus_markdown "$dir"
+			gen_markdown "$dir"
 			gen_syllabus_epub "$dir"
 		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
 			gen_syllabus_epub "$dir"

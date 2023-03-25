@@ -41,8 +41,7 @@ write_new_modt () {
 
 }
 
-
-check_pre_comp_notes () {
+check_pre_comp_notes_markdown () {
 
 	local nmodtime
 	local lmodt_file
@@ -102,7 +101,7 @@ update_lmodt () {
 	while read -r file
 	do
 		if ! grep "lmodt_$(basename "${file%.*}")" <<<"$modified_time_norg" > /dev/null 2>&1 ; then
-			check_pre_comp_notes "$file"
+			check_pre_comp_notes_markdown "$file"
 		fi
 	done <<<"$nf_notes"
 
@@ -164,7 +163,7 @@ notes_ebook () {
 		while read -r file
 		do
 			check_metadata "$file"
-			if ! check_pre_comp_notes "$file" ; then
+			if ! check_pre_comp_notes_markdown "$file" ; then
 				gen_markdown "$dir"
 			fi
 

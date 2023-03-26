@@ -6,9 +6,14 @@ unset gen_type
 unset modified_cover_title
 unset modified_time_norg
 
+tmpdir="$TMPDIR/epubconv"
+mkdir "$tmpdir" > /dev/null 2>&1
+
 check_metadata () {
 
 	# First Arg --> path to the norg file
+
+	[[ -z $1 ]] && return 1
 
 	local meta
 
@@ -28,6 +33,7 @@ write_new_modt () {
 
 	local path
 	local time
+	local line
 
 	while read -r line
 	do
@@ -60,6 +66,7 @@ check_pre_comp_syllabus_markdown () {
 
 	local imodtime=""
 	local norgfiles=$(find "$1" \( -iname syllabus*.norg -o -iname index.norg \))
+	local file
 
 	while read -r file
 	do
@@ -91,6 +98,7 @@ update_lmodt () {
 	# First Arg --> directory that last converted to markdown
 	
 	local nf_notes
+	local file
 
 	if ! grep "lmodt_syllabus" <<<"$modified_time_norg" > /dev/null 2>&1 ; then
 		check_pre_comp_syllabus_markdown "$1"
@@ -111,23 +119,21 @@ gen_cover_img () {
 
 	# First Arg --> Path to the norg file with the metadata for title
 	# Second Arg --> Subtitle
+	# Third Arg --> extra extention for the cover name
 
 	local dir=${1%/*}
-	local tmpdir="$TMPDIR/epubconv"
 	local font="$HOME/.fonts/FiraCode.ttf"
 	local title
 
-	mkdir "$tmpdir" > /dev/null 2>&1
-
 	title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
 
-	if ! check_pre_comp_cover "$dir/ebook/cover_$2" "$title"; then
+	if ! check_pre_comp_cover "$dir/ebook/cover_${3}" "$title"; then
 
 		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
 		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
 		convert -size 800x1080 xc:white "$tmpdir/back.png"
 		composite -gravity center "$tmpdir/title.png" "$tmpdir/back.png" "$tmpdir/first.png"
-		composite -gravity center "$tmpdir/subtitle.png" "$tmpdir/first.png" "$dir/ebook/cover_$2.png"
+		composite -gravity center "$tmpdir/subtitle.png" "$tmpdir/first.png" "$dir/ebook/cover_${3}.png"
 
 		write_new_modt "modified_cover_title"
 	fi
@@ -145,27 +151,52 @@ gen_markdown () {
 
 	[[ -d "$1/ebook" ]] || exit 1
 
-
+	update_lmodt "$1"
 }
 
-gen_notes_ebook () {
-	echo hai
+gen_notes_epub () {
+
+	# First Arg --> path to the notes*.norg file that needs to be converted
+
+	local name=$(basename "${1%.norg}")
+	local dir=${1%/*}
+	local cover_img
+
+	gen_cover_img "$1" "Notes" "$name"
+	cover_img="${1%/*}/ebook/cover_$name.png"
+
+	pandoc --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
 }
 
 notes_ebook () {
 
 	local norg_files
+	local dir
+	local file
 
 	while read -r dir
 	do
-		[[ -z $dir ]] && continue
-		norg_files=$(find "$dir" -iname notes*.norg)
+		[[ -z "$dir" ]] && continue
+
+		if [[ -f "$dir" ]]; then
+			norg_files="$dir"
+			dir="${dir%/*}"
+		else
+			norg_files=$(find "$dir" -iname notes*.norg)
+		fi
+
 		while read -r file
 		do
 			check_metadata "$file"
+
 			if ! check_pre_comp_notes_markdown "$file" ; then
 				gen_markdown "$dir"
+				gen_notes_epub "$file"
+			elif [[ ! -f "${file%.norg}.epub" ]]; then
+				gen_notes_epub "$file"
 			fi
+
+			write_new_modt "modified_time_norg"
 
 		done <<<"$norg_files"
 
@@ -180,10 +211,11 @@ gen_syllabus_epub () {
 	local cover_img
 	local md_files
 	local epub_name
+	local file
 
 	epub_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
-	gen_cover_img "$1/index.norg" "syllabus"
+	gen_cover_img "$1/index.norg" "Syllabus" "syllabus"
 	cover_img="$1/ebook/cover_syllabus.png"
 
 	md_files=$(find "$1/ebook" -iname syllabus*.md | sort)
@@ -201,6 +233,7 @@ gen_syllabus_epub () {
 syllabus_ebook () {
 
 	local title
+	local dir
 
 	while read -r dir
 	do
@@ -234,18 +267,20 @@ do
 			gen_type=""
 			;;
 		*)
-			[[ -d $arg ]] || continue
 			if [[ $gen_type == "syllabus" ]]; then
-				dirs_for_syllabus+="${arg}"$'\n'
+				[[ -d $arg ]] && dirs_for_syllabus+="${arg}"$'\n'
 			elif [[ $gen_type == "notes" ]]; then
-				dirs_for_notes+="${arg}"$'\n'
+				[[ -f $arg || -d $arg ]] && dirs_for_notes+="${arg}"$'\n'
 			elif [[ $gen_type == "" ]]; then
-				dirs_for_syllabus+="${arg}"$'\n'
-				dirs_for_notes+="${arg}"$'\n'
+				[[ -d $arg ]] && dirs_for_syllabus+="${arg}"$'\n'
+				[[ -f $arg || -d $arg ]] && dirs_for_notes+="${arg}"$'\n'
 			fi
 			;;
 	esac
 done
 
-#syllabus_ebook "${dirs_for_syllabus}"
-notes_ebook "${dirs_for_notes}"
+dirs_for_syllabus=$(sed "/^$/d" <<<"${dirs_for_syllabus}")
+dirs_for_notes=$(sed "/^$/d" <<<"${dirs_for_notes}")
+
+[[ -z $dirs_for_syllabus ]] || syllabus_ebook "${dirs_for_syllabus}"
+[[ -z $dirs_for_notes ]] || notes_ebook "${dirs_for_notes}"

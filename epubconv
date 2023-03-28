@@ -93,23 +93,6 @@ check_pre_comp_cover () {
 	return 1
 }
 
-check_pre_comp_epub () {
-
-	# First Arg --> path to the epub
-	# Second Arg --> path to the lmodt of the corresponding norg file(s)
-
-	local dir="${1%/*}"
-	local epub_lmodt_file="$dir/ebook/lmodt_$(basename "${1%.epub}")_epub"
-
-	if [[ -f "$1" && -f "$epub_lmodt_file" && "$2" ]]; then
-		if [[ $(cat "$epub_lmodt_file") -gt $(cat "$2") ]]; then
-			return 0
-		fi
-	fi
-	return 1
-
-}
-
 update_lmodt () {
 
 	# First Arg --> directory that last converted to markdown
@@ -203,10 +186,7 @@ notes_ebook () {
 
 		if [[ -f "$dir" ]]; then
 			norg_files="$dir"
-			echo "$dir"
 			dir="${dir%/*}"
-			echo "$dir"
-			exit
 		else
 			norg_files=$(find "$dir" -iname notes*.norg)
 		fi
@@ -218,7 +198,7 @@ notes_ebook () {
 			if ! check_pre_comp_notes_markdown "$file" ; then
 				gen_markdown "$dir"
 				gen_notes_epub "$file"
-			elif ! check_pre_comp_epub "${file%.norg}.epub" "$dir/ebook/lmodt_$(basename "${file%.norg}")" ; then
+			elif [[ ! -f "${file%.norg}.epub" ]]; then
 				gen_notes_epub "$file"
 			fi
 
@@ -279,7 +259,7 @@ syllabus_ebook () {
 		if ! check_pre_comp_syllabus_markdown "$dir" ; then
 			gen_markdown "$dir"
 			gen_syllabus_epub "$dir"
-		elif ! check_pre_comp_epub "$dir/${title}_syllabus.epub" "$dir/ebook/lmodt_syllabus" ; then
+		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
 			gen_syllabus_epub "$dir"
 		fi
 		write_new_modt "modified_time_norg"

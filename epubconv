@@ -93,6 +93,23 @@ check_pre_comp_cover () {
 	return 1
 }
 
+check_pre_comp_epub () {
+
+	# First Arg --> path to the epub
+	# Second Arg --> path to the lmodt of the corresponding norg file(s)
+
+	local dir="${1%/*}"
+	local epub_lmodt_file="$dir/ebook/lmodt_$(basename "${1%.epub}")_epub"
+
+	if [[ -f "$1" && -f "$epub_lmodt_file" && "$2" ]]; then
+		if [[ $(cat "$epub_lmodt_file") -gt $(cat "$2") ]]; then
+			return 0
+		fi
+	fi
+	return 1
+
+}
+
 update_lmodt () {
 
 	# First Arg --> directory that last converted to markdown
@@ -138,7 +155,6 @@ gen_cover_img () {
 		write_new_modt "modified_cover_title"
 	fi
 
-
 }
 
 gen_markdown () {
@@ -161,11 +177,18 @@ gen_notes_epub () {
 	local name=$(basename "${1%.norg}")
 	local dir=${1%/*}
 	local cover_img
+	local lmodt_epub_file
+	local lmodt_epub
 
 	gen_cover_img "$1" "Notes" "$name"
 	cover_img="${1%/*}/ebook/cover_$name.png"
 
 	pandoc --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
+
+	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
+	lmodt_epub=$(stat --printf "%Y\n" "$dir/${name}.epub")
+	modified_time_norg+="$lmodt_epub_file@$lmodt_epub"$'\n'
+
 }
 
 notes_ebook () {
@@ -180,7 +203,10 @@ notes_ebook () {
 
 		if [[ -f "$dir" ]]; then
 			norg_files="$dir"
+			echo "$dir"
 			dir="${dir%/*}"
+			echo "$dir"
+			exit
 		else
 			norg_files=$(find "$dir" -iname notes*.norg)
 		fi
@@ -192,7 +218,7 @@ notes_ebook () {
 			if ! check_pre_comp_notes_markdown "$file" ; then
 				gen_markdown "$dir"
 				gen_notes_epub "$file"
-			elif [[ ! -f "${file%.norg}.epub" ]]; then
+			elif ! check_pre_comp_epub "${file%.norg}.epub" "$dir/ebook/lmodt_$(basename "${file%.norg}")" ; then
 				gen_notes_epub "$file"
 			fi
 
@@ -212,6 +238,8 @@ gen_syllabus_epub () {
 	local md_files
 	local epub_name
 	local file
+	local lmodt_epub_file
+	local lmodt_epub
 
 	epub_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
@@ -227,6 +255,10 @@ gen_syllabus_epub () {
 	done <<<"$md_files"
 
 	pandoc --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
+
+	lmodt_epub_file="$1/ebook/lmodt_${epub_name}_syllabus_epub"
+	lmodt_epub=$(stat --printf "%Y\n" "$1/${epub_name}_syllabus.epub")
+	modified_time_norg+="$lmodt_epub_file@$lmodt_epub"$'\n'
 
 }
 
@@ -247,7 +279,7 @@ syllabus_ebook () {
 		if ! check_pre_comp_syllabus_markdown "$dir" ; then
 			gen_markdown "$dir"
 			gen_syllabus_epub "$dir"
-		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
+		elif ! check_pre_comp_epub "$dir/${title}_syllabus.epub" "$dir/ebook/lmodt_syllabus" ; then
 			gen_syllabus_epub "$dir"
 		fi
 		write_new_modt "modified_time_norg"
@@ -267,6 +299,7 @@ do
 			gen_type=""
 			;;
 		*)
+			arg=$(readlink -e "$arg")
 			if [[ $gen_type == "syllabus" ]]; then
 				[[ -d $arg ]] && dirs_for_syllabus+="${arg}"$'\n'
 			elif [[ $gen_type == "notes" ]]; then

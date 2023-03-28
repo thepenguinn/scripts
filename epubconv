@@ -65,7 +65,7 @@ check_pre_comp_notes_markdown () {
 check_pre_comp_syllabus_markdown () {
 
 	local imodtime=""
-	local norgfiles=$(find "$1" \( -iname syllabus*.norg -o -iname index.norg \))
+	local norgfiles=$(find "$1" \( -iname "syllabus*.norg" -o -iname index.norg \))
 	local file
 
 	while read -r file
@@ -104,7 +104,7 @@ update_lmodt () {
 		check_pre_comp_syllabus_markdown "$1"
 	fi
 
-	nf_notes=$(find "$1" -type f -iname notes*.norg)
+	nf_notes=$(find -type f "$1" -iname notes*.norg)
 
 	while read -r file
 	do

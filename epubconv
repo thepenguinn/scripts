@@ -104,7 +104,7 @@ update_lmodt () {
 		check_pre_comp_syllabus_markdown "$1"
 	fi
 
-	nf_notes=$(find -type f "$1" -iname notes*.norg)
+	nf_notes=$(find "$1" -iname notes*.norg)
 
 	while read -r file
 	do

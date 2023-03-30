@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/bin/bash
 
 KINDLE_MAC_ADDR="f4:03:2a:d5:42:6c"
 KINDLE_IP_ADDR=$(ip neigh | grep $KINDLE_MAC_ADDR | cut -d" " -f1)
@@ -14,7 +14,7 @@ no_kindle() {
 	for i in $(seq 1 8)
 	do
 		KINDLE_IP_ADDR=$(ip neigh | grep $KINDLE_MAC_ADDR | cut -d" " -f1)
-		# ip neigh could return kindle ip address if kindle got disconnected after
+		# ip neigh could return kindle ip address even after kindle got disconnected after
 		# once connecting, until resarting hotspot. Hence, KINDLE_IP_ADDR could contain
 		# an invalid ip address, so dry running ssh with a 2 second timeout
 		timeout 2 ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR echo > /dev/null 2>&1 && printf "Ladies and Gentlemen, we got him...\n" && sleep 1 && return 0
@@ -23,18 +23,20 @@ no_kindle() {
 		[[ $? != 124 ]] && sleep 2
 	done
 	printf "Couldn't find kindle...\n"
-	printf "Aborting...\n"
+	printf "Bailing out...\n"
 	exit 1
 }
 
-# adding ssh key to ssh-agent if no ssh keys have been added.
-# we've only one ssh key... otherwise we need to check the specific key using
-# for kindle.
-ssh-add -l > /dev/null 2>&1 || ssh-add
+check_kindle () {
+	# adding ssh key to ssh-agent if no ssh keys have been added.
+	# we've only one ssh key... otherwise we need to check the specific key using
+	# for kindle.
+	ssh-add -l > /dev/null 2>&1 || ssh-add
+	# checking whether ssh could connect to kindle otherwise calling no_kindle
+	timeout 2 ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR echo > /dev/null 2>&1 || no_kindle
+}
 
-#[[ $KINDLE_IP_ADDR = "" ]] && no_kindle
-# checking whether ssh could connect to kindle otherwise calling no_kindle
-timeout 2 ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR echo > /dev/null 2>&1 || no_kindle
+check_kindle
 
 usage() {
 	printf "kdb [sub-command] [arguments]\n\n"
@@ -72,19 +74,8 @@ no_dir() {
 	[[ $mk_dir =~ ^[Yy] ]] && eval "ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR \"(mkdir -p \\\"$TARGET\\\")\"" || exit 1
 }
 
-kindle_push() {
-	if ! ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "([ -d $TARGET ])" ;then
-		no_dir 
-	fi
-	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" "$SOURCE" root@$KINDLE_IP_ADDR:\"$TARGET\""
-}
-
-kindle_pull() {
-	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$KINDLE_IP_ADDR$(sed s@^\ @@ <<<"$SOURCE") \"$TARGET\""
-}
-
 set_push_points() {
-	for i in $(seq $((argc+1)) $(($#-1)))
+	for i in $(seq 1 $(($#-1)))
 	do
 		[[ ${!i} =~ ^-h|--help$ ]] && usage
 		SOURCE+="\"${!i}\" "
@@ -97,7 +88,7 @@ set_push_points() {
 }
 
 set_pull_points() {
-	for i in $(seq $((argc+1)) $(($#-1)))
+	for i in $(seq 1 $(($#-1)))
 	do
 		[[ ${!i} =~ ^-h|--help$ ]] && usage
 		if [[ ${!i} =~ ^/ ]]; then
@@ -110,7 +101,27 @@ set_pull_points() {
 	TARGET="${!#}"
 }
 
+kindle_push() {
+
+	set_push_points "$@"
+
+	if ! ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "([ -d $TARGET ])" ;then
+		no_dir
+	fi
+	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" "$SOURCE" root@$KINDLE_IP_ADDR:\"$TARGET\""
+
+}
+
+kindle_pull() {
+
+	set_pull_points "$@"
+
+	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$KINDLE_IP_ADDR$(sed s@^\ @@ <<<"$SOURCE") \"$TARGET\""
+
+}
+
 kindle_sync() {
+
 	[[ $(($#-$argc)) -eq  2 ]] || usage
 	argc=$((argc+1))
 	SOURCE=${!argc}
@@ -122,22 +133,25 @@ kindle_sync() {
 	[[ $SOURCE =~ /$ ]] || SOURCE+="/"
 	[[ $TARGET =~ /$ ]] || TARGET+="/"
 	if ! ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "([ -d $TARGET ])" ;then
-		no_dir 
+		no_dir
 	fi
 	rsync -rvuP -e "ssh -o StrictHostKeyChecking=no" ${SOURCE}* root@$KINDLE_IP_ADDR:$TARGET
 	rsync -rvuP -e "ssh -o StrictHostKeyChecking=no" root@$KINDLE_IP_ADDR:${TARGET}* $SOURCE
 }
 
 kindle_shell() {
+
 	if [[ $argc == ${#} ]]; then
 		ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR
 	else
-		ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "($(sed s@^shell\ @@ <<<"$@"))"
+		ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "$@"
 	fi
+
 }
 
 kindle_hall() {
-	case $2 in
+
+	case $1 in
 		1|0)
 			eval "ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR \"echo $2 > /sys/devices/soc0/rex_hall/hall_enable\""
 			[[ $2 == 1 ]] && printf "Hall Sensor: Enabled\n" || printf "Hall Sensor: Disabled\n"
@@ -157,19 +171,18 @@ kindle_hall() {
 			usage
 	esac
 }
- 
-for i in "$@"
+
+for arg in "$@"
 do
 	argc=$((argc+1))
-	case $i in
+	shift
+	case $arg in
 		push)
-			set_push_points "$@"
-			kindle_push
+			kindle_push "$@"
 			exit 0
 			;;
 		pull)
-			set_pull_points "$@"
-			kindle_pull
+			kindle_pull "$@"
 			exit 0
 			;;
 		shell)

@@ -6,8 +6,8 @@ KINDLE_HOME_DIR="/mnt/us/documents/"
 SOURCE=""
 TARGET=""
 
-argc=0
 mk_dir=0
+unset subcmd
 
 no_kindle() {
 	printf "Waiting for kindle to connect...\n"
@@ -33,10 +33,11 @@ check_kindle () {
 	# for kindle.
 	ssh-add -l > /dev/null 2>&1 || ssh-add
 	# checking whether ssh could connect to kindle otherwise calling no_kindle
-	timeout 2 ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR echo > /dev/null 2>&1 || no_kindle
+	if timeout 2 ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR echo > /dev/null 2>&1 ; then
+		return 0
+	fi
+	return 1
 }
-
-check_kindle
 
 usage() {
 	printf "kdb [sub-command] [arguments]\n\n"
@@ -64,8 +65,6 @@ usage() {
 	#printf ""
 	exit 1
 }
-
-[[ $# == 0 ]] && usage
 
 no_dir() {
 	printf "Directory doesn't exist: \"$TARGET\"\n"
@@ -103,6 +102,10 @@ set_pull_points() {
 
 kindle_push() {
 
+	if ! check_kindle ; then
+		no_kindle
+	fi
+
 	set_push_points "$@"
 
 	if ! ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "([ -d $TARGET ])" ;then
@@ -114,6 +117,10 @@ kindle_push() {
 
 kindle_pull() {
 
+	if ! check_kindle ; then
+		no_kindle
+	fi
+
 	set_pull_points "$@"
 
 	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$KINDLE_IP_ADDR$(sed s@^\ @@ <<<"$SOURCE") \"$TARGET\""
@@ -122,9 +129,12 @@ kindle_pull() {
 
 kindle_sync() {
 
-	[[ $(($#-$argc)) -eq  2 ]] || usage
-	argc=$((argc+1))
-	SOURCE=${!argc}
+	if ! check_kindle ; then
+		no_kindle
+	fi
+
+	[[ $(($#-1)) -eq  2 ]] || usage
+	SOURCE=${!2}
 	if [[ ${!#} =~ ^/ ]]; then
 		TARGET=${!#}
 	else
@@ -141,7 +151,11 @@ kindle_sync() {
 
 kindle_shell() {
 
-	if [[ $argc == ${#} ]]; then
+	if ! check_kindle ; then
+		no_kindle
+	fi
+
+	if [[ ${#} == 0 ]]; then
 		ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR
 	else
 		ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR "$@"
@@ -172,33 +186,36 @@ kindle_hall() {
 	esac
 }
 
-for arg in "$@"
-do
-	argc=$((argc+1))
-	shift
-	case $arg in
-		push)
-			kindle_push "$@"
-			exit 0
-			;;
-		pull)
-			kindle_pull "$@"
-			exit 0
-			;;
-		shell)
-			kindle_shell "$@"
-			exit 0
-			;;
-		sync)
-			kindle_sync "$@"
-			exit 0
-			;;
-		hall)
-			kindle_hall "$@"
-			exit 0
-			;;
-		*)
-			usage
-			;;
-	esac
-done
+[[ $# == 0 ]] && usage
+
+subcmd="$1"
+
+shift
+case "$subcmd" in
+	push)
+		kindle_push "$@"
+		exit 0
+		;;
+	pull)
+		kindle_pull "$@"
+		exit 0
+		;;
+	shell)
+		kindle_shell "$@"
+		exit 0
+		;;
+	sync)
+		kindle_sync "$@"
+		exit 0
+		;;
+	hall)
+		kindle_hall "$@"
+		exit 0
+		;;
+	justcheck)
+		check_kindle && exit 0 || exit 1
+		;;
+	*)
+		usage
+		;;
+esac

@@ -6,8 +6,112 @@ unset gen_type
 unset modified_cover_title
 unset modified_time_norg
 
+declare -A kindle_push_files
+
+kindle_push_all=0
+
 tmpdir="$TMPDIR/epubconv"
 mkdir "$tmpdir" > /dev/null 2>&1
+
+ask_for_push () {
+
+	# First Arg --> relative path from the kindle's home directory or absolute path
+	# ... Args --> files to push to kindle
+
+	local push
+	local local
+
+	printf "LOCAL:\n"
+	for local in $(seq 2 ${#})
+	do
+		printf "    \"${!local}\"\n"
+	done
+	printf "REMOTE:\n"
+	printf "    \"kindle:${1}\"\n\n"
+	printf "    Y - Push all files and never show me this prompt again.\n"
+	printf "    y - Push files.\n"
+	printf "    * - Just don't.\n\n"
+	printf "Do you want to push LOCAL files to REMOTE ? : "
+
+	read -r push
+	printf "\n"
+
+	case $push in
+		Y)
+			kindle_push_all=1
+			return 0
+			;;
+		y)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+
+}
+
+push_kindle () {
+
+	local dir
+	local kdir
+	local tdir
+	local elem
+	local index
+	declare -n elem
+
+	if ! kdb justcheck > /dev/null 2>&1 ; then
+		return 1
+	fi
+
+	for elem in "${!kindle_push_files[@]}"
+	do
+		index=${!elem}
+		dir=${kindle_push_files[$index]}
+
+		if [[ ! "$dir" =~ ^/ ]]; then
+			dir=$(readlink -e $dir)
+		fi
+
+		kdir=""
+		tdir=$(basename "$dir")
+
+		# TODO: Maybe, clean this a little bit... ?
+		while [[ -f ${dir}/../index.norg ]]
+		do
+			if grep "{:${dir}/index:}\|{:${tdir%%/*}/index:}" ${dir}/../index.norg > /dev/null 2>&1 ; then
+				kdir="$tdir"
+				dir="${dir%/*}"
+				tdir="$(basename "$dir")/$tdir"
+			elif [[ -z $kdir ]]; then
+				kdir="."
+				break
+			else
+				break
+			fi
+
+		done
+
+		if [[ $kindle_push_all ==  1 ]] || ask_for_push "$kdir" "${elem[@]}"; then
+			kdb push "${elem[@]}" "$kdir"
+		fi
+
+	done
+
+}
+
+add_for_push () {
+
+	# First Arg --> Path to the epub.
+
+	local dir=${1%/*}
+	local index=$(sed "s%/%%g;s% %_%g" <<<"$dir")
+
+	kindle_push_files+=([$index]="$dir")
+	declare -a -g "$index"
+	eval "$index+=(\"$1\")"
+
+}
 
 check_metadata () {
 
@@ -204,6 +308,8 @@ notes_ebook () {
 
 			write_new_modt "modified_time_norg"
 
+			add_for_push "${file%.norg}.epub"
+
 		done <<<"$norg_files"
 
 	done <<<"$@"
@@ -262,7 +368,11 @@ syllabus_ebook () {
 		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
 			gen_syllabus_epub "$dir"
 		fi
+
 		write_new_modt "modified_time_norg"
+
+		add_for_push "$dir/${title}_syllabus.epub"
+
 	done <<<"$@"
 }
 
@@ -297,3 +407,4 @@ dirs_for_notes=$(sed "/^$/d" <<<"${dirs_for_notes}")
 
 [[ -z $dirs_for_syllabus ]] || syllabus_ebook "${dirs_for_syllabus}"
 [[ -z $dirs_for_notes ]] || notes_ebook "${dirs_for_notes}"
+push_kindle

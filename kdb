@@ -168,7 +168,7 @@ kindle_hall() {
 	case $1 in
 		1|0)
 			eval "ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR \"echo $1 > /sys/devices/soc0/rex_hall/hall_enable\""
-			[[ $2 == 1 ]] && printf "Hall Sensor: Enabled\n" || printf "Hall Sensor: Disabled\n"
+			[[ $1 == 1 ]] && printf "Hall Sensor: Enabled\n" || printf "Hall Sensor: Disabled\n"
 			;;
 		stat|status)
 			case $(ssh -o StrictHostKeyChecking=no root@$KINDLE_IP_ADDR cat /sys/devices/soc0/rex_hall/hall_enable) in

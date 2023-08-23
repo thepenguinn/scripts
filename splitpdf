@@ -1,0 +1,221 @@
+#!/bin/bash
+
+dry_run=0
+unset out_path
+unset input_file
+unset index_file
+
+argc=0
+skiparg=0
+
+usage() {
+	printf "pdfsplit [arguments]\n\n"
+	printf " -n: dry run, prints each subsections of level 1 and the page range.\n"
+	printf " -i: input file.\n"
+	printf " -o: output path.\n"
+	printf " -f: index file.\n"
+	exit 1
+}
+
+error_handle() {
+	printf "Couldn't find \""$1"\" in \""$(sed -n ${2}p)"\"\n"
+	printf "$3"
+}
+
+split_from_bookmark_data() {
+	# Spliting on the basis of index data from the pdf.
+	local prev_pg
+	local sec_title
+	local path
+
+	local raw_pdf_index=$(pdftk "$1" dump_data \
+	| grep -A 2 "BookmarkTitle" \
+	| grep -A 1 -B 1 "BookmarkLevel: 1" \
+	| sed "/^--$/d;/BookmarkLevel/d")
+
+	local formated_index=$(paste -d "#" \
+	<(grep "BookmarkTitle" <<<"$raw_pdf_index" | cut -d":" -f2 | sed "s/^ //;s/ $//" | tr " " _) \
+	<(grep "BookmarkPageNumber" <<<"$raw_pdf_index" | cut -d":" -f2 | sed "s/ //g"))
+
+	local total_pages=$(pdftk "$1" dump_data_annots | grep "NumberOfPages" | cut -d":" -f2 | tr -d " ")
+
+	while IFS="#" read -r sec num
+	do
+		if [[ $prev_pg == "" ]]; then
+			sec_title=$sec
+			prev_pg=$num
+			continue
+		fi
+
+		if [[ $dry_run == 0 ]]; then
+			pdftk "$1" cat ${prev_pg}-$((num-1)) output "${out_path}${path}${sec_title}".pdf
+		else
+			echo "${out_path}${path}${sec_title}:${prev_pg}-$((num-1))"
+		fi
+		echo "${sec_title}:${prev_pg}-$((num-1))"
+
+		sec_title=$sec
+		prev_pg=$num
+	done <<<"$formated_index"
+
+	if [[ $dry_run == 0 ]]; then
+		pdftk "$1" cat ${prev_pg}-$((num-1)) output "${out_path}${path}${sec_title}".pdf
+	else
+		echo "${out_path}${path}${sec_title}:${prev_pg}-$((num-1))"
+	fi
+	echo "${sec_title}:${prev_pg}-$((num-1))"
+}
+
+split_from_index_file() {
+	# Spliting on the basis of given index_file.
+	declare -a depth_array
+	local path
+	local new_depth=0
+	local abs_depth=0
+	local sec_title
+	local pg_range
+	local ln_num=0
+
+	# The user can specify different directories to group created pdfs
+	# with markdown like syntax.
+	#     #dir1    --> pdf1 and pdf2 will be placed inside dir1/
+	#     pdf1
+	#     pdf2
+	#     ##dir2   --> pdf3, pdf4 and pdf5 will be placed insdie dir1/dir2
+	#     pdf3     --> user can also specify the second dir as "###dir2"
+	#     pdf4     --> the number of pound signs just needs to be greater
+	#     pdf5     --> than the previous dir.
+	#     #dir3    --> pdf6 will be placed inside dir3/
+	#     pdf6
+	#     ####dir4 --> likewise pdf7 will be placed inside dir3/dir4 because
+	#     pdf7     --> dir4 has more pound signs, if there was another dir5 with
+	#              --> 2 pound signs between dir3 and dir4 then the path will
+	#              --> be dir3/dir5/dir4/
+
+	while read -r line
+	do
+		# Keeping record of current line number.
+		ln_num=$((ln_num+1))
+		[[ $line == "" ]] && continue
+		if [[ $line =~ ^# ]]; then
+			# Counting number of pound signs and removing them
+			line="${line#\#}"
+			new_depth="$((new_depth+1))"
+			while [[ $line =~ ^# ]]
+			do
+				line="${line#\#}"
+				new_depth="$((new_depth+1))"
+			done
+			# Asking user for the dir name if we find something like this "###"
+			if [[ $line == "" ]]; then
+				error_handle "Directory Name" "$ln_num" "Do you want to skip this directory?[Nn/Yy]: "
+				read -r reponse
+				case $reponse in
+					[Yy])
+						printf "Directory Name: "
+						read -r line
+						[[ $line == "" ]] && continue
+						;;
+					*)
+						printf "Skipping creating the directory...\n"
+						continue
+						;;
+				esac
+			fi
+			# Dude! I just don't know how to verbally explain what the fuck this is doing...
+			if [[ $new_depth -gt ${depth_array[$abs_depth]} ]]; then
+				path+="${line}/"
+				abs_depth=$((abs_depth+1))
+				depth_array[$abs_depth]=$new_depth
+			elif [[ $new_depth -lt ${depth_array[$abs_depth]} ]]; then
+				for i in $(seq 0 $((abs_depth-1)) | sort -r)
+				do
+					path="${path%/*/*/*}"
+					while [[ $path =~ \\$ ]]
+					do
+						path="${path%/*/*/*}"
+					done
+					[[ $path =~ /$ ]] && path="" || path="${path}/"
+					if [[ ${depth_array[$i]} -le $new_depth ]] && \
+						[[ ${depth_array[$((i+1))]} -gt $new_depth ]]; then
+						abs_depth=$i
+						path+="${line}/"
+						break
+					fi
+				done
+			else
+				path="${path%/*/*}/${line}/"
+			fi
+
+			new_depth=0
+			[[ $dry_run == 0 ]] && mkdir -p "$path" > /dev/null 2>&1
+			continue
+		fi
+
+		[[ $line =~ ^\\ ]] && line=${line#\\}
+
+		sec_title="${line%:*}"
+		pg_range="${line##*:}"
+
+		[[ $sec_title = "" ]] && \
+			error_handle "Section Title" "$ln_num" "Skipping line ${ln_num}..." && \
+			continue
+		[[ ! $pg_range =~ [0-9]+-[0-9]+ ]] && \
+			error_handle "Page Range" "$ln_num" "Skipping line ${ln_num}..." && \
+			continue
+
+		if [[ $dry_run == 0 ]]; then
+			pdftk "${2}" cat ${pg_range} output "${out_path}${path}${sec_title}".pdf
+		else
+			echo "${out_path}${path}${sec_title}:${pg_range}"
+		fi
+	done < "${1}"
+}
+
+[[ $@ == "" ]] && usage
+
+for arg in "$@"
+do
+	argc=$((argc+1))
+	if [[ $skiparg == 0 ]]; then
+		case $arg in
+			-i)
+				argc=$((argc+1))
+				input_file=${argc}
+				skiparg=1
+				argc=$((argc-1))
+				;;
+			-o)
+				argc=$((argc+1))
+				if [[ ${!argc} =~ /$ ]]; then
+					out_path=${!argc}
+				else
+					out_path="${!argc}/"
+				fi
+				skiparg=1
+				argc=$((argc-1))
+				;;
+			-n)
+				dry_run=1
+				;;
+			-f)
+				argc=$((argc+1))
+				index_file=${argc}
+				skiparg=1
+				argc=$((argc-1))
+				;;
+			*)
+				usage
+				;;
+		esac
+	else
+		skiparg=0
+	fi
+done
+
+if [[ $index_file == "" ]]; then
+	split_from_bookmark_data "${!input_file}"
+else
+	split_from_index_file "${!index_file}" "${!input_file}"
+fi
+exit 0

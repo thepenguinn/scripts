@@ -105,7 +105,7 @@ add_for_push () {
 	# First Arg --> Path to the epub.
 
 	local dir=${1%/*}
-	local index=$(sed "s%/%%g;s% %_%g" <<<"$dir")
+	local index=$(sed "s%/%_%g;s% %_%g" <<<"$dir")
 
 	kindle_push_files+=([$index]="$dir")
 	declare -a -g "$index"
@@ -250,7 +250,7 @@ gen_markdown () {
 
 	local dir=$(sed "s; ;\\\ ;" <<<"$1")
 
-	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q" "$1/../index.norg" > /dev/null 2>&1
+	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q!" "$1/../index.norg" > /dev/null
 
 	[[ -d "$1/ebook" ]] || exit 1
 
@@ -365,6 +365,7 @@ syllabus_ebook () {
 		if ! check_pre_comp_syllabus_markdown "$dir" ; then
 			gen_markdown "$dir"
 			gen_syllabus_epub "$dir"
+
 		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
 			gen_syllabus_epub "$dir"
 		fi

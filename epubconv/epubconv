@@ -1,0 +1,411 @@
+#!/bin/bash
+
+unset dirs_for_syllabus
+unset dirs_for_notes
+unset gen_type
+unset modified_cover_title
+unset modified_time_norg
+
+declare -A kindle_push_files
+
+kindle_push_all=0
+
+tmpdir="$TMPDIR/epubconv"
+mkdir "$tmpdir" > /dev/null 2>&1
+
+ask_for_push () {
+
+	# First Arg --> relative path from the kindle's home directory or absolute path
+	# ... Args --> files to push to kindle
+
+	local push
+	local local
+
+	printf "LOCAL:\n"
+	for local in $(seq 2 ${#})
+	do
+		printf "    \"${!local}\"\n"
+	done
+	printf "REMOTE:\n"
+	printf "    \"kindle:${1}\"\n\n"
+	printf "    Y - Push all files and never show me this prompt again.\n"
+	printf "    y - Push files.\n"
+	printf "    * - Just don't.\n\n"
+	printf "Do you want to push LOCAL files to REMOTE ? : "
+
+	read -r push
+	printf "\n"
+
+	case $push in
+		Y)
+			kindle_push_all=1
+			return 0
+			;;
+		y)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+
+}
+
+push_kindle () {
+
+	local dir
+	local kdir
+	local tdir
+	local elem
+	local index
+	declare -n elem
+
+	if ! kdb justcheck > /dev/null 2>&1 ; then
+		return 1
+	fi
+
+	for elem in "${!kindle_push_files[@]}"
+	do
+		index=${!elem}
+		dir=${kindle_push_files[$index]}
+
+		if [[ ! "$dir" =~ ^/ ]]; then
+			dir=$(readlink -e $dir)
+		fi
+
+		kdir=""
+		tdir=$(basename "$dir")
+
+		# TODO: Maybe, clean this a little bit... ?
+		while [[ -f ${dir}/../index.norg ]]
+		do
+			if grep "{:${dir}/index:}\|{:${tdir%%/*}/index:}" ${dir}/../index.norg > /dev/null 2>&1 ; then
+				kdir="$tdir"
+				dir="${dir%/*}"
+				tdir="$(basename "$dir")/$tdir"
+			elif [[ -z $kdir ]]; then
+				kdir="."
+				break
+			else
+				break
+			fi
+
+		done
+
+		if [[ $kindle_push_all ==  1 ]] || ask_for_push "$kdir" "${elem[@]}"; then
+			kdb push "${elem[@]}" "$kdir"
+		fi
+
+	done
+
+}
+
+add_for_push () {
+
+	# First Arg --> Path to the epub.
+
+	local dir=${1%/*}
+	local index=$(sed "s%/%_%g;s% %_%g" <<<"$dir")
+
+	kindle_push_files+=([$index]="$dir")
+	declare -a -g "$index"
+	eval "$index+=(\"$1\")"
+
+}
+
+check_metadata () {
+
+	# First Arg --> path to the norg file
+
+	[[ -z $1 ]] && return 1
+
+	local meta
+
+	if [[ -f  "$1" ]]; then
+		meta=$(sed -n "0,/@end/p" "$1")
+		if grep "@document.meta" <<<"$meta" > /dev/null 2>&1 ; then
+			return 0
+		fi
+		printf "Couldn't extract metadata from the norg file: \""$1"\"\nExiting...\n"
+	else
+		printf "Couldn't find norg file: \"$1/\"\nExiting...\n"
+	fi
+	exit 1
+}
+
+write_new_modt () {
+
+	local path
+	local time
+	local line
+
+	while read -r line
+	do
+		[[ -z $line ]] && continue
+		path=${line%@*}
+		time=${line#*@}
+		echo "$time" > "$path"
+	done <<<"${!1}"
+
+	unset "$1"
+
+}
+
+check_pre_comp_notes_markdown () {
+
+	local nmodtime
+	local lmodt_file
+
+	lmodt_file="${1%/*}/ebook/lmodt_$(basename "${1%.*}")"
+	nmodtime=$(stat --printf "%Y\n" "$1")
+	if [[ -f "$lmodt_file" && "$nmodtime" -le $(cat "$lmodt_file") ]]; then
+		return 0
+	fi
+	modified_time_norg+="$lmodt_file@$nmodtime"$'\n'
+	return 1
+
+}
+
+check_pre_comp_syllabus_markdown () {
+
+	local imodtime=""
+	local norgfiles=$(find "$1" \( -iname "syllabus*.norg" -o -iname index.norg \))
+	local file
+
+	while read -r file
+	do
+		imodtime+=$(stat --printf "%Y\n" "$file")$'\n'
+	done <<<"$norgfiles"
+
+	imodtime=$(sort <<<"$imodtime" | tail -n 1)
+
+	if [[ -f "$1/ebook/lmodt_syllabus" && $imodtime -le $(cat "$1/ebook/lmodt_syllabus") ]]; then
+		return 0
+	fi
+	modified_time_norg+="$1/ebook/lmodt_syllabus@$imodtime"$'\n'
+	return 1
+}
+
+check_pre_comp_cover () {
+
+	if [[ -f "${1}.png" && -f "${1}_title" ]]; then
+		if [[ $2 == $(cat "${1}_title") ]]; then
+			return 0
+		fi
+	fi
+	modified_cover_title="${1}_title@$2"
+	return 1
+}
+
+update_lmodt () {
+
+	# First Arg --> directory that last converted to markdown
+
+	local nf_notes
+	local file
+
+	if ! grep "lmodt_syllabus" <<<"$modified_time_norg" > /dev/null 2>&1 ; then
+		check_pre_comp_syllabus_markdown "$1"
+	fi
+
+	nf_notes=$(find "$1" -iname notes*.norg)
+
+	while read -r file
+	do
+		if ! grep "lmodt_$(basename "${file%.*}")" <<<"$modified_time_norg" > /dev/null 2>&1 ; then
+			check_pre_comp_notes_markdown "$file"
+		fi
+	done <<<"$nf_notes"
+
+}
+
+gen_cover_img () {
+
+	# First Arg --> Path to the norg file with the metadata for title
+	# Second Arg --> Subtitle
+	# Third Arg --> extra extention for the cover name
+
+	local dir=${1%/*}
+	local font="$HOME/.fonts/FiraCode.ttf"
+	local title
+
+	title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1")
+
+	if ! check_pre_comp_cover "$dir/ebook/cover_${3}" "$title"; then
+
+		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
+		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
+		convert -size 800x1080 xc:white "$tmpdir/back.png"
+		composite -gravity center "$tmpdir/title.png" "$tmpdir/back.png" "$tmpdir/first.png"
+		composite -gravity center "$tmpdir/subtitle.png" "$tmpdir/first.png" "$dir/ebook/cover_${3}.png"
+
+		write_new_modt "modified_cover_title"
+	fi
+
+}
+
+gen_markdown () {
+
+	# First Arg --> Path to the directory that wants to be converted
+
+	local dir=$(sed "s; ;\\\ ;" <<<"$1")
+
+	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q!" "$1/../index.norg" > /dev/null
+
+	[[ -d "$1/ebook" ]] || exit 1
+
+	update_lmodt "$1"
+}
+
+gen_notes_epub () {
+
+	# First Arg --> path to the notes*.norg file that needs to be converted
+
+	local name=$(basename "${1%.norg}")
+	local dir=${1%/*}
+	local cover_img
+	local lmodt_epub_file
+	local lmodt_epub
+
+	gen_cover_img "$1" "Notes" "$name"
+	cover_img="${1%/*}/ebook/cover_$name.png"
+
+	pandoc --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
+
+	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
+	lmodt_epub=$(stat --printf "%Y\n" "$dir/${name}.epub")
+	modified_time_norg+="$lmodt_epub_file@$lmodt_epub"$'\n'
+
+}
+
+notes_ebook () {
+
+	local norg_files
+	local dir
+	local file
+
+	while read -r dir
+	do
+		[[ -z "$dir" ]] && continue
+
+		if [[ -f "$dir" ]]; then
+			norg_files="$dir"
+			dir="${dir%/*}"
+		else
+			norg_files=$(find "$dir" -iname notes*.norg)
+		fi
+
+		while read -r file
+		do
+			check_metadata "$file"
+
+			if ! check_pre_comp_notes_markdown "$file" ; then
+				gen_markdown "$dir"
+				gen_notes_epub "$file"
+			elif [[ ! -f "${file%.norg}.epub" ]]; then
+				gen_notes_epub "$file"
+			fi
+
+			write_new_modt "modified_time_norg"
+
+			add_for_push "${file%.norg}.epub"
+
+		done <<<"$norg_files"
+
+	done <<<"$@"
+}
+
+
+gen_syllabus_epub () {
+
+	# First Arg --> Path to the directory that wants to be converted
+
+	local cover_img
+	local md_files
+	local epub_name
+	local file
+	local lmodt_epub_file
+	local lmodt_epub
+
+	epub_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
+
+	gen_cover_img "$1/index.norg" "Syllabus" "syllabus"
+	cover_img="$1/ebook/cover_syllabus.png"
+
+	md_files=$(find "$1/ebook" -iname syllabus*.md | sort)
+	sed -n "1,/---/p" "$1/ebook/index.md" > "$1/ebook/ebook.md"
+
+	while read -r file
+	do
+		sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
+	done <<<"$md_files"
+
+	pandoc --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
+
+	lmodt_epub_file="$1/ebook/lmodt_${epub_name}_syllabus_epub"
+	lmodt_epub=$(stat --printf "%Y\n" "$1/${epub_name}_syllabus.epub")
+	modified_time_norg+="$lmodt_epub_file@$lmodt_epub"$'\n'
+
+}
+
+syllabus_ebook () {
+
+	local title
+	local dir
+
+	while read -r dir
+	do
+
+		[[ -z $dir ]] && continue
+
+		check_metadata "$dir/index.norg"
+
+		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$dir/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
+
+		if ! check_pre_comp_syllabus_markdown "$dir" ; then
+			gen_markdown "$dir"
+			gen_syllabus_epub "$dir"
+
+		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
+			gen_syllabus_epub "$dir"
+		fi
+
+		write_new_modt "modified_time_norg"
+
+		add_for_push "$dir/${title}_syllabus.epub"
+
+	done <<<"$@"
+}
+
+for arg in "$@"
+do
+	case $arg in
+		-s)
+			gen_type=syllabus
+			;;
+		-n)
+			gen_type=notes
+			;;
+		-sn|-ns)
+			gen_type=""
+			;;
+		*)
+			arg=$(readlink -e "$arg")
+			if [[ $gen_type == "syllabus" ]]; then
+				[[ -d $arg ]] && dirs_for_syllabus+="${arg}"$'\n'
+			elif [[ $gen_type == "notes" ]]; then
+				[[ -f $arg || -d $arg ]] && dirs_for_notes+="${arg}"$'\n'
+			elif [[ $gen_type == "" ]]; then
+				[[ -d $arg ]] && dirs_for_syllabus+="${arg}"$'\n'
+				[[ -f $arg || -d $arg ]] && dirs_for_notes+="${arg}"$'\n'
+			fi
+			;;
+	esac
+done
+
+dirs_for_syllabus=$(sed "/^$/d" <<<"${dirs_for_syllabus}")
+dirs_for_notes=$(sed "/^$/d" <<<"${dirs_for_notes}")
+
+[[ -z $dirs_for_syllabus ]] || syllabus_ebook "${dirs_for_syllabus}"
+[[ -z $dirs_for_notes ]] || notes_ebook "${dirs_for_notes}"
+push_kindle

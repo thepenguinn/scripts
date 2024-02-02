@@ -9,7 +9,7 @@ unset prcode
 stty -echo
 printf "\033[?25l"
 
-trap "printf '\n\033[?25h\033[0m' && stty echo && stty sane  && exit" EXIT
+trap "printf '\n\033[?25h\033[0m' && stty echo && stty sane && exit" EXIT
 trap "printf '\n\033[?25h\033[0m' && stty echo && stty sane && exit" SIGINT
 
 invalid_input () {

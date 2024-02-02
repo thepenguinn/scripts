@@ -1,0 +1,64 @@
+#!/bin/bash
+
+if [[ $JF_USER_NAME == "" ]]; then
+    printf "Its seems like JF_USER_NAME has not been exported.\n"
+    printf "Export it in your shell rc.\n"
+    printf "Exiting...\n"
+    exit 1
+fi
+
+if [[ $JF_MAC_ADDR == "" ]]; then
+    printf "Its seems like JF_MAC_ADDR has not been exported.\n"
+    printf "Export it in your shell rc.\n"
+    printf "Exiting...\n"
+    exit 1
+fi
+
+Neko_dir="/sdcard/Music/NekoX"
+Remote_dir="storage/shared/Music"
+Jf_User_Name="$JF_USER_NAME"
+Jf_Mac_Addr="$JF_MAC_ADDR"
+
+ssh-add -l > /dev/null 2>&1 || ssh-add
+
+Jf_ip_addr=$(ip neigh | grep "$Jf_Mac_Addr" | grep "\." | cut -d" " -f1)
+
+Selected=$(ls --sort=time  -1 ${Neko_dir} | fzf -m)
+
+ssh_media_scan() {
+
+    local files_to_scan=""
+
+    while read -r line
+    do
+        files_to_scan+="\"\$HOME/${Remote_dir}/${line}\" "
+    done <<<"${@}"
+
+    command ssh -o StrictHostKeyChecking=no -p 8022 ${Jf_User_Name}@${Jf_ip_addr} termux-media-scan "${files_to_scan}"
+
+
+}
+
+rsync_push() {
+
+    local source=""
+    local line
+    local remote
+
+    remote="${Jf_User_Name}@${Jf_ip_addr}:${Remote_dir}/"
+
+    while read -r line
+    do
+        [[ ${line} =~ ^/ ]] && source+="\"${line}\" " || source+="\"$Neko_dir/${line}\" "
+    done <<<"${@}"
+
+    eval "command rsync -rvuP -e \"ssh -p 8022 -o StrictHostKeyChecking=no\" "${source}" "${remote}""
+
+}
+
+if [[ "$Selected" != "" ]]; then
+    rsync_push "$Selected"
+    ssh_media_scan "$Selected"
+else
+    exit 1
+fi

@@ -1,0 +1,314 @@
+#!/bin/bash
+
+main_extra_len=0
+unset ipaddr
+unset portid
+unset chosen
+unset prcode
+Output_dir="/sdcard/scrcpy_shot"
+Tmp_dir="${TMPDIR}/scrcpy_shot"
+
+mkdir "${Output_dir}" > /dev/null 2>&1
+mkdir "${Tmp_dir}" > /dev/null 2>&1
+
+stty -echo
+printf "\033[?25l"
+
+trap "printf '\n\033[?25h\033[0m' && stty echo && stty sane  && exit" EXIT
+trap "printf '\n\033[?25h\033[0m' && stty echo && stty sane && exit" SIGINT
+
+# user=$(whoami)
+#
+# if [[ $user != "daniel" || $user != "root" ]] ; then
+# 	printf "\n\033[31;1m Not Inside Proot Environment. \033[0mRun from a proot environment."
+# 	exit 1
+# fi
+
+if ! adb --version > /dev/null 2>&1 ;then
+ 	printf "\n\033[31;1m adb is not installed. \033[0mInstall adb to continue."
+	exit 1
+fi
+
+if ! scrcpy --version > /dev/null 2>&1 ;then
+ 	printf "\n\033[31;1m scrcpy is not installed. \033[0mInstall scrcpy to continue."
+	exit 1
+fi
+
+if [[ $SCSHOT_DEFAULT_IP =~ ^([0-9]{1,3}[\.]){3}[0-9]{1,3}$ ]]; then
+	ipaddr=$SCSHOT_DEFAULT_IP
+fi
+
+if [[ $SCSHOT_DEFAULT_PI =~ ^[0-9]{6}$ ]]; then
+	portid=$SCSHOT_DEFAULT_PI
+fi
+
+invalid_input () {
+	printf "\n\033[31;1m Invalid Input. \033[0mPick one above."
+	sleep 2
+	printf "\033[2F\033[11C\033[0J"
+}
+
+read_input () {
+	printf "\033[?25h"
+	stty echo
+	read -r chosen
+	printf "\033[?25l"
+	stty -echo
+}
+
+print_info () {
+	printf "\033[0m\033[1;30m"
+	printf "%.0s─" {1..37}
+	printf "\n"
+	printf "\033[32m IP Addr\033[0m: \033[33;1m$ipaddr\n"
+	printf "\033[0m\033[1;32m Port ID\033[0m: \033[33;1m$portid\n"
+	printf "\033[0m\033[1;30m"
+	printf "%.0s─" {1..37}
+	printf "\n\n"
+}
+
+invalid_port () {
+	printf "\n\033[31;1m Invalid Port ID. \033[0mSould be 5 digit long numeral."
+	sleep 2
+	printf "\033[2F\033[12C\033[0J"
+}
+
+get_port () {
+	printf "\033[0m  \033[1mx \033[0m-─ \033[30;1mGo Back\n\n"
+	printf "\033[0m "
+	printf "[\033[1mPORT ID\033[0m]: "
+	read_input
+	validate () {
+		if [[ $chosen =~ ^[0-9]{5}$ ]]; then
+			portid=$chosen
+			printf "\033[8F\033[0J"
+			print_info
+		elif [[ $chosen == "x" ]]; then
+			printf "\033[3F\033[0J"
+		else
+			invalid_port
+			read_input
+			validate
+		fi
+	}
+	validate
+}
+
+invalid_ip () {
+	printf "\n\033[31;1m Invalid Ip Address. \033[0mTry Again."
+	sleep 2
+	printf "\033[2F\033[12C\033[0J"
+}
+
+get_ip () {
+	printf "\033[0m  \033[1mx \033[0m-─ \033[30;1mGo Back\n\n"
+	printf "\033[0m "
+	printf "[\033[1mIP ADDR\033[0m]: "
+	read_input
+	validate () {
+		if [[ $chosen =~ ^([0-9]{1,3}[\.]){3}[0-9]{1,3}$ ]]; then
+			ipaddr=$chosen
+			printf "\033[8F\033[0J"
+			print_info
+		elif [[ $chosen == "x" ]]; then
+			printf "\033[3F\033[0J"
+		else
+			invalid_ip
+			read_input
+			validate
+		fi
+	}
+	validate
+}
+
+invalid_code () {
+	printf "\n\033[31;1m Invalid Pairing Code. \033[0mSould be 6 digit long numeral."
+	sleep 2
+	printf "\033[2F\033[17C\033[0J"
+}
+
+get_code () {
+	printf "\033[0m  \033[1mx \033[0m-─ \033[30;1mGo Back\n\n"
+	printf "\033[0m "
+	printf "[\033[1mPAIRING CODE\033[0m]: "
+	read_input
+	validate () {
+		if [[ $chosen =~ ^[0-9]{6}$ ]]; then
+			prcode=$chosen
+			printf "\033[8F\033[0J"
+			print_info
+			return 0
+		elif [[ $chosen == "x" ]]; then
+			printf "\033[3F\033[0J"
+			return 1
+		else
+			invalid_code
+			read_input
+			validate
+		fi
+	}
+	validate
+}
+
+connect_device () {
+	printf "\033[35;1m Connecting to device...\n"
+	local connect_log=$(timeout 6 adb connect $ipaddr:$portid 2>/dev/null)
+	local reason=$(awk -F":" '{print $3}' <<<"$connect_log")
+	if grep -o "connected" <<<"$connect_log" > /dev/null; then
+		printf "\033[35;1m Connected to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid"
+		echo "export EX=\"$ipaddr:$portid\"" > /sdcard/.adfi
+		return 0
+	else
+		printf "\n\033[31;1m Failed to connect to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid\n"
+		printf " ~>$reason\n"
+		sleep 2
+		printf "\033[4F\033[0J"
+		return 1
+	fi
+}
+
+pair_device () {
+	printf "\033[35;1m Pairing device...\n"
+	connect_log=$(timeout 6 adb pair $ipaddr:$portid $prcode 2>/dev/null)
+	reason=$(awk -F":" '{print $2}' <<<"$connect_log")
+	if grep -o "Successfully paired" <<<"$connect_log" > /dev/null; then
+		printf "\033[35;1m Paired to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid"
+	else
+		printf "\n\033[31;1m Failed to pair to \033[33;1m$ipaddr\033[00m:\033[33;1m$portid\n"
+		printf " ~>$reason\n"
+		sleep 2
+		printf "\033[4F\033[0J"
+	fi
+}
+
+screenshot () {
+
+	local output="Screenshot-$(date "+%Y-%m-%d_%H-%M-%s").png"
+
+	# timeout 1.5 scrcpy -b 20M -N --require-audio -r "$output"
+	# ffmpeg -ss 00:00:00.01 -i "${output}" -frames:v 1 -y oh.png
+
+	if connect_device ;then
+
+		printf "\n\n"
+		printf "\033[34;1m Launching Whatsapp...\n"
+		# adb shell am start com.whatsapp/.Main > /dev/null 2>&1
+		sleep 4
+		printf "\033[34;1m Dusting off the glass...\n"
+		adb shell input tap 500 500 > /dev/null 2>&1
+
+		printf "\033[34;1m Started recording...\n"
+		timeout 2 scrcpy -b 20M -N --require-audio -r "${Tmp_dir}/video.mp4" > /dev/null 2>&1
+
+		printf "\033[34;1m Relaunching Termux...\n"
+		adb shell am start com.termux/.HomeActivity > /dev/null 2>&1
+
+		printf "\033[34;1m Extracting the frame...\n"
+		ffmpeg -loglevel quiet -ss 00:00:00.01 -i "${Tmp_dir}/video.mp4" -frames:v 1 -y "${Output_dir}/${output}"
+
+		printf "\033[8F\033[0J"
+
+	else
+		return 1
+	fi
+
+}
+
+main () {
+	printf "\033[0m  \033[1mi \033[0m-─ \033[1mChange Ip\n"
+	printf "\033[0m  \033[1mp \033[0m-─ \033[1mChange Port\n"
+	printf "\033[0m  \033[1mx \033[0m-─ \033[30;1mExit\n"
+
+	if [[ $ipaddr != "" && $portid != "" ]]; then
+		printf "\n"
+		printf "\033[0m  \033[36;1ml \033[0m-─ \033[36mPair Device\n"
+		printf "\033[0m  \033[35;1ms \033[0m-─ \033[35mScreen Shot\n"
+		printf "\033[0m  \033[35;1mr \033[0m-─ \033[35mScreen Record\n\n"
+		main_extra_len=4
+	else
+		printf "\n"
+	fi
+
+	printf "\033[0m [\033[1mCHOICE\033[0m]: "
+	printf "\n\033[1A\033[11C"
+	read_input
+	validate () {
+		case $chosen in
+			i)
+				printf "\033[$((5+main_extra_len))F\033[0J"
+				get_ip
+				main
+				;;
+			p)
+				printf "\033[$((5+main_extra_len))F\033[0J"
+				get_port
+				main
+				;;
+			x)
+				exit 1
+				;;
+			*)
+				if [[ $ipaddr != "" && $portid != "" ]]; then
+					case $chosen in
+						s)
+							printf "\033[$((5+main_extra_len))F\033[0J"
+							screenshot
+							main
+							;;
+						r)
+							printf "\033[$((5+main_extra_len))F\033[0J"
+							printf " wip, bye!!\n"
+							sleep 1
+							printf "\033[1F\033[0J"
+							main
+							;;
+						l)
+							printf "\033[$((5+main_extra_len))F\033[0J"
+							[[ $portid = "Not Specified" ]] && get_port
+							get_code && pair_device
+							main
+							;;
+					esac
+				else
+					invalid_input
+					read_input
+					validate
+				fi
+				;;
+		esac
+	}
+	validate
+}
+
+for i in "$@"
+do
+	argc=$((argc+1))
+	if [[ $skiparg == 1 ]]; then
+		case $i in
+			-p)
+				argc=$((argc+1))
+				if [[ "${!argc}" =~ ^[0-9]{5}$ ]]; then
+					portid="${!argc}"
+					skiparg=1
+				fi
+				argc=$((argc-1))
+				;;
+			-i)
+				argc=$((argc+1))
+				if [[ "${!argc}" =~ ^([0-9]{1,3}[\.]){3}[0-9]{1,3}$ ]]; then
+					ipaddr="${!argc}"
+					skiparg=1
+				fi
+				argc=$((argc-1))
+				;;
+		esac
+	else
+		skiparg=0
+	fi
+done
+
+print_info
+if [[ $portid == "Not Specified" ]]; then
+	get_port
+fi
+main

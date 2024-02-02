@@ -27,6 +27,8 @@ split_from_bookmark_data() {
 	local prev_pg
 	local sec_title
 	local path
+	local sec
+	local num
 
 	local raw_pdf_index=$(pdftk "$1" dump_data \
 	| grep -A 2 "BookmarkTitle" \
@@ -68,13 +70,16 @@ split_from_bookmark_data() {
 
 split_from_index_file() {
 	# Spliting on the basis of given index_file.
-	declare -a depth_array
-	local path
+	local line
+	local new_path
+	local i
+	local pdf_title
+	local pdf_range
+	local cur_path="."
+	local cur_depth=0
 	local new_depth=0
-	local abs_depth=0
-	local sec_title
-	local pg_range
-	local ln_num=0
+	local pre_depth=0
+	local line_num=0
 
 	# The user can specify different directories to group created pdfs
 	# with markdown like syntax.
@@ -94,81 +99,67 @@ split_from_index_file() {
 
 	while read -r line
 	do
-		# Keeping record of current line number.
-		ln_num=$((ln_num+1))
-		[[ $line == "" ]] && continue
-		if [[ $line =~ ^# ]]; then
-			# Counting number of pound signs and removing them
-			line="${line#\#}"
-			new_depth="$((new_depth+1))"
-			while [[ $line =~ ^# ]]
-			do
-				line="${line#\#}"
-				new_depth="$((new_depth+1))"
-			done
-			# Asking user for the dir name if we find something like this "###"
-			if [[ $line == "" ]]; then
-				error_handle "Directory Name" "$ln_num" "Do you want to skip this directory?[Nn/Yy]: "
-				read -r reponse
-				case $reponse in
-					[Yy])
-						printf "Directory Name: "
-						read -r line
-						[[ $line == "" ]] && continue
-						;;
-					*)
-						printf "Skipping creating the directory...\n"
-						continue
-						;;
-				esac
-			fi
-			# Dude! I just don't know how to verbally explain what the fuck this is doing...
-			if [[ $new_depth -gt ${depth_array[$abs_depth]} ]]; then
-				path+="${line}/"
-				abs_depth=$((abs_depth+1))
-				depth_array[$abs_depth]=$new_depth
-			elif [[ $new_depth -lt ${depth_array[$abs_depth]} ]]; then
-				for i in $(seq 0 $((abs_depth-1)) | sort -r)
-				do
-					path="${path%/*/*/*}"
-					while [[ $path =~ \\$ ]]
-					do
-						path="${path%/*/*/*}"
-					done
-					[[ $path =~ /$ ]] && path="" || path="${path}/"
-					if [[ ${depth_array[$i]} -le $new_depth ]] && \
-						[[ ${depth_array[$((i+1))]} -gt $new_depth ]]; then
-						abs_depth=$i
-						path+="${line}/"
-						break
-					fi
-				done
-			else
-				path="${path%/*/*}/${line}/"
-			fi
 
-			new_depth=0
-			[[ $dry_run == 0 ]] && mkdir -p "$path" > /dev/null 2>&1
+		line_num=$((line_num+1))
+
+		if [[ $line =~ ^$ ]]; then
 			continue
 		fi
 
-		[[ $line =~ ^\\ ]] && line=${line#\\}
+		if [[ $line =~ ^# ]]; then
 
-		sec_title="${line%:*}"
-		pg_range="${line##*:}"
+			new_depth=$(grep -o "^#\+" <<<"$line" | wc -m)
+			new_depth=$((new_depth-1))
+			new_path=$(sed 's/^#\+//' <<<"$line")
 
-		[[ $sec_title = "" ]] && \
-			error_handle "Section Title" "$ln_num" "Skipping line ${ln_num}..." && \
+			if [[ $new_depth -lt $cur_depth ]]; then
+
+				for i in $(seq 0 $((cur_depth-new_depth)))
+				do
+					cur_path=${cur_path%/*}
+					cur_depth=$((cur_depth-1))
+				done
+
+			elif [[ $new_depth -le $pre_depth ]]; then
+
+				cur_path=${cur_path%/*}
+				cur_depth=$((cur_depth-1))
+
+			fi
+
+			cur_path="${cur_path}/${new_path}"
+
+			if [[ $dry_run == 0 ]]; then
+				mkdir ${cur_path} > /dev/null 2>&1
+			fi
+
+			echo "Current path: ${cur_path}"
+			cur_depth=$((cur_depth+1))
+			pre_depth=$new_depth
 			continue
-		[[ ! $pg_range =~ [0-9]+-[0-9]+ ]] && \
-			error_handle "Page Range" "$ln_num" "Skipping line ${ln_num}..." && \
+
+		fi
+
+		pdf_title=${line%:*}
+		pdf_range=${line##*:}
+
+		if [[ $pdf_title = "" ]] ; then
+			error_handle "Section Title" "$line_num" "Skipping line ${line_num}..."
 			continue
+		fi
+
+		if [[ ! $pdf_range =~ [0-9]+-[0-9]+ ]] ; then
+			error_handle "Page Range" "$lline_num" "Skipping line ${line_num}..."
+			continue
+		fi
 
 		if [[ $dry_run == 0 ]]; then
-			pdftk "${2}" cat ${pg_range} output "${out_path}${path}${sec_title}".pdf
+			echo "Creating ${cur_path}/${pdf_title}.pdf"
+			pdftk "${2}" cat "${pdf_range}" output "${cur_path}/${pdf_title}.pdf"
 		else
-			echo "${out_path}${path}${sec_title}:${pg_range}"
+			echo "${cur_path}/${pdf_title}.pdf"
 		fi
+
 	done < "${1}"
 }
 

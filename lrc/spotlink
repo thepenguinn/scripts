@@ -1,0 +1,58 @@
+#!/system/xbin/bash
+
+
+argc=0
+qryin=0
+youtube=0
+content=track
+silent=0
+debug=0
+
+query_spotify() {
+	link=$(curl -s "https://www.google.com/search?q="${query}"+site%3Aspotify.com&ei=JVlSYtHCA-6MseMPwNGeiAc&ved=0ahUKEwiR6fbF0Ij3AhVuRmwGHcCoB3EQ4dUDCA4&uact=5&oq=hate+to+be+lame+lizzy+site%3Aspotify.com&gs_lcp=Cgdnd3Mtd2l6EANKBAhBGABKBAhGGABQAFi1c2C5dmgEcAF4AIAByQGIAfkikgEGMC4zMC4xmAEAoAEBwAEB&sclient=gws-wiz"  -H "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.3 Chrome/87.0.4280.144 Safari/537.36" | grep -o "https://open.spotify.com/"${content}"/.*\"" | awk -F "\"" '{print $1}' | head -n 1)
+
+	[[ ${debug} == 0 ]] && [[ ! ${link} == "" ]] && am start com.shabinder.spotiflyer/com.shabinder.spotiflyer.MainActivity > /dev/null 2>&1 &
+}
+
+query_youtubemusic(){
+	link=$(curl -s "https://www.google.com/search?q="${query}"+site%3Amusic.youtube.com&ei=JVlSYtHCA-6MseMPwNGeiAc&ved=0ahUKEwiR6fbF0Ij3AhVuRmwGHcCoB3EQ4dUDCA4&uact=5&oq=hate+to+be+lame+lizzy+site%3Aspotify.com&gs_lcp=Cgdnd3Mtd2l6EANKBAhBGABKBAhGGABQAFi1c2C5dmgEcAF4AIAByQGIAfkikgEGMC4zMC4xmAEAoAEBwAEB&sclient=gws-wiz"  -H "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.3 Chrome/87.0.4280.144 Safari/537.36" | grep -o "https://music.youtube.com/watch?v=.\{11\}" | head -n 1)
+	[[ ${debug} == 0 ]] && [[ ! ${link} == "" ]] && am start com.junkfood.seal/.MainActivity > /dev/null 2>&1 &
+}
+
+for i in "$@"
+do
+	let "argc=argc+1"
+	case $i in
+		-s)
+			silent=1
+			;;
+		-d)
+			debug=1
+			;;
+		-y)
+			youtube=1
+			;;
+		-ab)
+			content=album
+			;;
+		-ar)
+			content=artist
+			;;
+		-pl)
+			content=playlist
+			;;
+		*)
+			qryin="$argc"
+			;;
+	esac
+done
+
+[[ "${silent}" == 0 ]] && echo "querying for "${!qryin}"..."
+
+query=$(echo "${!qryin}" | sed 's/\r//g;s/\ /+/g')
+
+[[ "${youtube}" == 0 ]] && query_spotify || query_youtubemusic
+
+[[ ${silent} == 0 ]] && echo "done."
+
+echo "${link}" | tee >(termux-clipboard-set)

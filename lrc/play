@@ -1,0 +1,26 @@
+#!/system/xbin/bash
+
+sleep_len=0
+filen=""
+
+song_dirs=$'/storage/0402-1016/daniel/\n/sdcard/Music/\n/sdcard/Download/Seal/'
+
+get_path () {
+	for line in "$song_dirs"
+	do
+		find $line -type f
+	done
+}
+
+[[ -z $1 ]] && filen=$(get_path | shuf | fzf ) || filen="$1"
+
+[[ -z $filen ]] && exit 1
+sleep_len=$(/data/data/com.termux/files/usr/bin/exiftool "$filen"| grep Duration | awk -F" +" '{print $3}'| awk -F":" '{print ($1*3600)+($2*60)+($3+1)}')
+
+[[ $sleep_len == 0 ]] && exit 1
+
+while true
+do
+	timeout 3 termux-media-player play "$filen"
+	sleep $sleep_len
+done

@@ -1,0 +1,103 @@
+#!/system/xbin/bash
+
+argc=0
+yes=0
+
+song_dir=$'/storage/0402-1016/daniel\n/sdcard/Music'
+lrc_path="/sdcard/RetroMusic/lyrics"
+site=""
+
+usage() {
+	printf "wip\n"
+}
+
+get_out() {
+	exit 1
+}
+
+get_file_list() {
+	for line in "$song_dir"
+	do
+	find $line -type f
+	done
+}
+
+get_meta()  {
+	printf "Collecting metadata... "
+	local file=$(get_file_list | fzf)
+	[[ -z $file ]] && get_out
+	local metad=$(/data/data/com.termux/files/usr/bin/exiftool "$file")
+	songn=$(grep "Title" <<<"$metad" | awk -F":" '{print $2}' | sed 's/^\ //')
+	artistn=$(grep "Artist" <<<"$metad" | awk -F":" '{print $2}' | sed 's/^\ //')
+	printf "\nQuerying for \"$songn by $artistn\"... "
+	printf "\n\n"
+}
+
+get_genius_lrc() {
+	local lyrics
+	if [[ -f "/sdcard/lyrics/$songn - ${artistn}.lrc" ]]; then
+		lyrics=$(cat "/sdcard/lyrics/$songn - ${artistn}.lrc")
+	else
+		lyrics=$(genius-lrc -s "$songn by $artistn")
+		[[ -z $lyrics ]] && exit 1
+		echo "$lyrics" > "/sdcard/lyrics/$songn - ${artistn}.lrc"
+	fi
+	if [[ ! $1 == "slient" ]]; then
+		bat "/sdcard/lyrics/$songn - ${artistn}.lrc" 
+		exit 0
+	fi
+}
+
+get_lrc() {
+	local lrc=$(lrc.sh -s! "$site" "$songn by $(awk -F"," '{print $1}' <<<"$artistn")")
+	[[ -z $lrc ]] && lrc=$(lrc.sh -s! "$site" "$songn")
+	head -n 6 <<<"$lrc"
+	if [[ $yes == 0 ]]; then
+		printf "\n Is the lyrics correct ? [y/n]: "
+		read -r yep
+		case $yep in
+			[Yy])
+				;;
+			*)
+				get_out
+				;;
+		esac
+	fi
+
+	if [[ -f "$lrc_path/$songn - $artistn.lrc" ]]; then
+		printf "\n $songn - $artistn.lrc already exist. Do you want to override it ? [y/n]: "
+		read -r yep
+		case $yep in
+			[Yy])
+				;;
+			*)
+				get_out
+				;;
+		esac
+	fi
+	local lfile=$(echo "$songn - $artistn.lrc" | sed 's@/@\\/@g' )
+	echo "$lrc" > "$lrc_path/$lfile"
+	#eval "echo \""$lrc"\" > \""$lrc_path/$lfile"\""
+	wait
+	exit 0
+}
+
+for i in "$@"
+do
+	argc=$((argc+1))
+	case "$i" in
+		-g|-r|-m)
+			site="$i"
+			;;
+		-y)
+			yes=1
+			;;
+		*)
+			usage
+			;;
+	esac
+done
+
+get_meta
+[[ $site == "-g" ]] && get_genius_lrc || get_lrc
+get_genius_lrc

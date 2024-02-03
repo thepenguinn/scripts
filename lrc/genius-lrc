@@ -1,0 +1,34 @@
+#!/system/xbin/bash
+
+qryin=0
+silent=0
+argc=0
+
+query_genius() {
+	link=$(curl -s "https://www.google.com/search?q="${query}"+site%3Agenius.com&ei=JVlSYtHCA-6MseMPwNGeiAc&ved=0ahUKEwiR6fbF0Ij3AhVuRmwGHcCoB3EQ4dUDCA4&uact=5&oq=hate+to+be+lame+lizzy+site%3Aspotify.com&gs_lcp=Cgdnd3Mtd2l6EANKBAhBGABKBAhGGABQAFi1c2C5dmgEcAF4AIAByQGIAfkikgEGMC4zMC4xmAEAoAEBwAEB&sclient=gws-wiz"  -H "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.3 Chrome/87.0.4280.144 Safari/537.36" | sed 's/\"/\n/g' | grep -o "https://genius.com/.*$" | head -n 1)
+
+	#ok, i dont understand what all those backslashes are doing...
+	curl -s "$link" -H "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.3 Chrome/87.0.4280.144 Safari/537.36" | grep "PRELOADED" | sed "s/^ *window.__PRELOADED_STATE__ = JSON.parse('//;s/');$//;s@<\\\/p>@\n@g" | head -n 1 | sed "s/<p>/\n/g" | tail -n 1 | sed "s/<br>\\\\\\\n/\n/g" | sed "s/\\\//g;s@</a>@@g;s/<a href=.*>/\n/g;s@ *<b> *@@g;s@ *</b> *@@g"
+}
+
+for i in "$@"
+do
+	let "argc=argc+1"
+	case $i in
+		-s)
+			silent=1
+			;;
+		*)
+			qryin="$argc"
+			;;
+	esac
+done
+
+[[ "${silent}" == 0 ]] && echo "querying for "${!qryin}"..."
+
+query=$(echo "${!qryin}" | sed 's/\r//g;s/\ /+/g')
+
+query_genius
+
+[[ ${silent} == 0 ]] && echo "done."
+

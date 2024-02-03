@@ -1,0 +1,682 @@
+#!/bin/bash
+
+argc=0
+skiparg=0
+showplyscrns=0
+redraw_main_menu=0
+redraw_loading=0
+nowplyscrn=unset
+justb=unset
+caref=unset
+cur_justb=unset
+cur_caref=unset
+cur_nowplyscrn=unset
+sel_justb=unset
+sel_caref=unset
+sel_nowplyscrn=unset
+term_size=$(stty size)
+unset _add_content
+unset _dot_len_justb_org
+unset _dot_len_caref_org
+unset _dot_len_nowplyscrn_org
+unset _dot_len_justb_sel
+unset _dot_len_caref_sel
+unset _dot_len_nowplyscrn_sel
+_stop_in=0
+_stop_in_p=0
+_stop_in_b=0
+_stop_in_c=0
+_loading_redraw_len_main=14
+_dot_len=1
+_choice=x
+_version=$(dumpsys package code.name.monkey.retromusic \
+	| grep -i versionname \
+	| cut -d= -f2)
+
+col_justb_main="\033[1;35m"
+col_caref_main="\033[1;35m"
+col_nowplyscrn_main="\033[1;35m"
+
+stty -echo
+
+trap "printf '\n\033[?25h' && stty echo && stty sane  && exit" EXIT
+trap "printf '\n\033[?25h' && stty echo && stty sane && exit" SIGINT
+trap "redraw_loading=1" SIGWINCH
+
+blink () {
+	local tep
+    local hello
+
+    local term_size=$(stty size)
+
+    local x=$(((${term_size% *}/2)-4))
+    local y=$(((${term_size#* }/2-13)))
+
+	while true
+	do
+		clear
+		printf "\033[?25l\033[31m \n"
+        printf "\033[%dB" $x
+
+		hello=$(($RANDOM % 19))
+		if [[ ! $tep == $hello ]]; then
+            printf "%*c" $y " "
+            printf "          .  .\n\n"
+        else
+            printf "\n\n"
+        fi
+
+		hello=$(($RANDOM % 18))
+        printf "%*c" $y " "
+		if [[ ! $tep == $hello ]]; then
+            printf "     .  .     "
+        else
+            printf "              "
+        fi
+
+        hello=$(($RANDOM % 18))
+        if [[ ! $tep == $hello ]]; then
+            printf "       .  .        \n"
+        else
+            printf "\n"
+        fi
+
+        hello=$(($RANDOM % 17))
+        if [[ ! $tep == $hello ]]; then
+            printf "%*c" $y " "
+            printf "              .  .\n"
+        else
+            printf "\n"
+        fi
+
+        hello=$(($RANDOM % 19))
+        if [[ ! $tep == $hello ]]; then
+            printf "%*c" $y " "
+            printf "       .  .\n"
+        else
+            printf "\n"
+        fi
+
+		sleep .1
+		tep=$(($RANDOM % 83))
+	done
+}
+
+usage () {
+	printf "usage: retro.sh [Options Value]\n\n"
+	printf "Options:\n"
+	printf "     -nps [--now-playing-screen]\n"
+	printf "     -jb  [--just-black]\n"
+	printf "     -ce  [--carousel-effect]\n"
+	printf "\nValues:\n"
+	printf "     -nps [0-19]         Or just run -nps for an intractive prompt\n"
+	printf "     -jb  [on|off]\n"
+	printf "     -ce  [on|off]\n"
+	exit 1
+}
+
+add_to_shared () {
+	sed -i "2s/$/\n    $_add_content/" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml
+}
+
+choose_one () {
+	printf "\033[00;1m"
+	stty echo
+	stty sane
+	read -p $' [CHOICE]: \033[?25h' _choice
+	stty -echo
+	printf "\033[?25l"
+}
+
+invalid_input () {
+	printf "\n\033[31;1m Invalid Input. \033[0mPick one above.\n"
+	sleep 2
+	printf "\033[3F\033[0J"
+}
+
+get_matching_scrn () {
+	local plyscrn
+	case "$1" in
+		0)
+			plyscrn="Normal"
+			;;
+		1)
+			plyscrn="Flat"
+			;;
+		2)
+			plyscrn="Full"
+			;;
+		3)
+			plyscrn="Plain"
+			;;
+		4)
+			plyscrn="Blur"
+			;;
+		5)
+			plyscrn="Color"
+			;;
+		6)
+			plyscrn="Card"
+			;;
+		7)
+			plyscrn="Tiny"
+			;;
+		8)
+			plyscrn="Simple"
+			;;
+		9)
+			plyscrn="Blur Card"
+			;;
+		10)
+			plyscrn="Adaptive"
+			;;
+		11)
+			plyscrn="Material"
+			;;
+		12)
+			plyscrn="Fit"
+			;;
+		13)
+			plyscrn="?"
+			;;
+		14)
+			plyscrn="Peek"
+			;;
+		15)
+			plyscrn="Circle"
+			;;
+		16)
+			plyscrn="Classic"
+			;;
+		17)
+			plyscrn="Gradient"
+			;;
+		18)
+			plyscrn="MD3"
+			;;
+		*)
+			plyscrn="Undefined"
+			;;
+	esac
+	echo "$plyscrn"
+}
+
+get_just_black () {
+	local now=$(grep "black_theme" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml \
+		| cut -d\" -f4)
+	case $now in
+		true)
+			cur_justb=On
+			;;
+		false)
+			cur_justb=Off
+			;;
+		*)
+			_add_content="<boolean name=\"black_theme\" value=\"true\" \/>"
+			add_to_shared
+			cur_justb=On
+			;;
+	esac
+}
+
+get_carousel_effect () {
+	local now=$(grep "carousel_effect" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml \
+		| cut -d\" -f4)
+	case $now in
+		true)
+			cur_caref=On
+			;;
+		false)
+			cur_caref=Off
+			;;
+		*)
+			_add_content="<boolean name=\"carousel_effect\" value=\"true\" \/>"
+			add_to_shared
+			cur_caref=Undefined
+			;;
+	esac
+}
+
+get_now_playing_screen () {
+	local now=$(grep "now_playing_screen" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml \
+		| cut -d\" -f4)
+	cur_nowplyscrn=$(get_matching_scrn $now)
+	if [[ $cur_nowplyscrn == Undefined ]]; then
+		_add_content="<int name=\"now_playing_screen_id\" value=\"0\" \/>"
+		add_to_shared
+		cur_nowplyscrn=Normal
+	fi
+}
+
+get_dot_length () {
+	local ex
+	[[ -z $3 ]] && ex=0 || ex=$3
+	echo $((${1}-(${#2}+$ex)))
+}
+
+set_just_black () {
+	sed -i "/black_theme/{s/value\=\"[A-Za-z]*\"/value\=\"${justb}\"/g}" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml
+}
+
+set_carousel_effect () {
+	sed -i "/carousel_effect/{s/value=\"[A-Za-z]*\"/value=\"${caref}\"/g}" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml
+}
+
+set_now_playing_screen () {
+	sed -i "/now_playing_screen/{s/=\"[0-9]*\"/=\"${nowplyscrn}\"/}" /data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml
+}
+
+write () {
+	if [[ ! $justb == unset ]]; then
+		set_just_black &
+		if [[ ${FUNCNAME[1]} == prompt ]]; then
+			col_justb_main="\033[1;31m"
+			cur_justb="$sel_justb"
+			_dot_len_justb_org=$(printf "%.0s." $(seq 1 $(get_dot_length 16 "$cur_justb" 2)))
+		fi
+		redraw_main_menu=1
+		wait
+	fi
+	if [[ ! $caref == unset ]]; then
+		set_carousel_effect &
+		if [[ ${FUNCNAME[1]} == prompt ]]; then
+			col_caref_main="\033[1;31m"
+			cur_caref="$sel_caref"
+			_dot_len_caref_org=$(printf "%.0s." $(seq 1 $(get_dot_length 11 "$cur_caref" 2)))
+		fi
+		redraw_main_menu=1
+		wait
+	fi
+	if [[ ! $nowplyscrn == unset ]]; then
+		set_now_playing_screen &
+		if [[ ${FUNCNAME[1]} == prompt ]]; then
+			col_nowplyscrn_main="\033[1;31m"
+			cur_nowplyscrn="$sel_nowplyscrn"
+			_dot_len_nowplyscrn_org=$(printf "%.0s." $(seq 1 $(get_dot_length 15 "$cur_nowplyscrn" 2)))
+		fi
+		redraw_main_menu=1
+		wait
+	fi
+}
+
+apply () {
+	write
+	am force-stop code.name.monkey.retromusic
+	am start -n code.name.monkey.retromusic/code.name.monkey.retromusic.activities.MainActivity 1> /dev/null
+	exit 0
+}
+
+intra_just_black () {
+	printf "\033[?25l\033[5H\033[0J\033[00m"
+	printf "     \033[0;33mJust Black\033[0m\n\n"
+	printf "\033[1m"
+	printf "  1 \033[0m-─ \033[1mOn\n"
+	printf "  2 \033[0m-─ \033[1mOff\n"
+	printf "  b \033[0m-─ \033[1mGo Back\n"
+	printf "  x \033[0m-─ \033[1;30mExit\n\n"
+	#printf ""
+	local do_again=0
+	prompt () {
+		choose_one
+		case $_choice in
+			1)
+				justb=true
+				sel_justb=On
+				_dot_len_justb_sel=$(printf "%.0s." $(seq 1 $(get_dot_length 21 "$sel_justb" 2)))
+				redraw_main_menu=1
+				;;
+			2)
+				justb=false
+				sel_justb=Off
+				_dot_len_justb_sel=$(printf "%.0s." $(seq 1 $(get_dot_length 21 "$sel_justb" 2)))
+				redraw_main_menu=1
+				;;
+			b)
+				redraw_main_menu=1
+				;;
+			x)
+				exit 2
+				;;
+			*)
+				invalid_input
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && return 28
+				do_again=1 && return
+				;;
+		esac
+		do_again=0
+	}
+	prompt
+	while [[ $do_again == 1 ]]
+	do
+		prompt
+	done
+	new_term_height=$(stty size) #TODO: Change this.
+	[[ ${new_term_height%\ [0-9]*} -lt 11 ]] && redraw_loading=1
+}
+
+intra_carousel () {
+	printf "\033[?25l\033[5H\033[0J\033[00m"
+	printf "     \033[0;33mCarousel Effect\033[0m\n\n"
+	printf "\033[1m"
+	printf "  1 \033[0m-─ \033[1mOn\n"
+	printf "  2 \033[0m-─ \033[1mOff\n"
+	printf "  b \033[0m-─ \033[1mGo Back\n"
+	printf "  x \033[0m-─ \033[1;30mExit\n\n"
+	#printf ""
+	local do_again=0
+	prompt () {
+		choose_one
+		case $_choice in
+			1)
+				caref=true
+				sel_caref=On
+				_dot_len_caref_sel=$(printf "%.0s." $(seq 1 $(get_dot_length 16 "$sel_caref" 2)))
+				redraw_main_menu=1
+				;;
+			2)
+				caref=false
+				sel_caref=Off
+				_dot_len_caref_sel=$(printf "%.0s." $(seq 1 $(get_dot_length 16 "$sel_caref" 2)))
+				redraw_main_menu=1
+				;;
+			b)
+				redraw_main_menu=1
+				;;
+			x)
+				exit 2
+				;;
+			*)
+				invalid_input
+				do_again=1 && return
+				;;
+		esac
+		do_again=0
+	}
+	prompt
+	while [[ $do_again == 1 ]]
+	do
+		prompt
+	done
+	new_term_height=$(stty size)
+	[[ ${new_term_height%\ [0-9]*} -lt 11 ]] && redraw_loading=1
+}
+
+intra_now_playing () {
+	printf "\033?25l\033[5H\033[0J\033[00m"
+	printf "     \033[0;33mNow Playing\033[0m\n\n"
+	printf "\033[1m  0  \033[0m-─ \033[1mNormal \033[0;30m........\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  1  \033[0m-─ \033[1mFlat \033[0;30m..........\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  2  \033[0m-─ \033[1mFull \033[0;30m................\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  3  \033[0m-─ \033[1mPlain \033[0;30m...............\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  4  \033[0m-─ \033[1mBlur \033[0;30m................\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  5  \033[0m-─ \033[1mColor \033[0;30m...............\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  6  \033[0m-─ \033[1mCard \033[0;30m................\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  7  \033[0m-─ \033[1mTiny \033[0;30m..........\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  8  \033[0m-─ \033[1mSimple \033[0;30m..............\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  9  \033[0m-─ \033[1mBlur Card \033[0;30m...........\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  10 \033[0m-─ \033[1mAdaptive \033[0;30m............\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  11 \033[0m-─ \033[1mMaterial \033[0;30m......\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  12 \033[0m-─ \033[1mFit \033[0;30m...........\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  14 \033[0m-─ \033[1mPeek \033[0;30m..........\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  15 \033[0m-─ \033[1mCircle \033[0;30m..............\033[0;1m[\033[1;35mPro\033[0;1m]\n"
+	printf "\033[1m  16 \033[0m-─ \033[1mClassic \033[0;30m.......\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  17 \033[0m-─ \033[1mGradient \033[0;30m......\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  18 \033[0m-─ \033[1mMD3 \033[0;30m...........\033[0;1m[\033[30mTogglable\033[0;1m]\n"
+	printf "\033[1m  b  \033[0m-─ \033[1mGo Back\n"
+	printf "\033[1m  x  \033[0m-─ \033[1;30mExit\n\n"
+	#printf "  13 \033[0m-─ \033[1mDon't do this...()\n"
+	local do_again=0
+	prompt () {
+		choose_one
+		case "$_choice" in
+			x)
+				exit 2
+				;;
+			13)
+				blink
+				;;
+			b)
+				redraw_main_menu=1
+				;;
+			[0-9]*)
+				nowplyscrn=$(sed "s/^\ *//g;s/\ *$//" <<<$_choice)
+				sel_nowplyscrn=$(get_matching_scrn $nowplyscrn)
+				_dot_len_nowplyscrn_sel=$(printf "%.0s." $(seq 1 $(get_dot_length 20 "$sel_nowplyscrn" 2)))
+				redraw_main_menu=1
+				;;
+			*)
+				invalid_input
+				do_again=1 && return
+				;;
+		esac
+		do_agin=0
+	}
+	prompt
+	while [[ $do_again == 1 ]]
+	do
+		prompt
+	done
+	new_term_height=$(stty size)
+	[[ ${new_term_height%\ [0-9]*} -lt 29 ]] && redraw_loading=1
+}
+
+loading_scrn () {
+	#if [[ ${term_size#[0-9]*\ } -lt 37 ]]; then
+	#	local width=${term_size#[0-9]*\ }
+	#else
+	#	local width=37
+	#fi
+	printf "\033[?25l\033[1;30m"
+	clear
+	#printf "%.0s─" $(seq 1 $width)
+	printf "%.0s─" {1..37}
+	printf "\033[00m"
+	printf "\n RetroMusic \033[33mv${_version}\n"
+	printf "\033[1;30m"
+	printf "%.0s─" {1..37}
+	#printf "%.0s─" $(seq 1 $width)
+	printf "\n\n"
+}
+
+main_menu () {
+	printf "\033[?25l\033[5H\033[0J"
+	printf "\033[00m"
+	printf "     \033[0;33mMain Menu  \033[0m\n\n"
+	printf "\033[00;1m  1\033[0;00m -─ \033[1mJust Black "
+	printf "\033[0;30m$_dot_len_justb_org\033[1;39m[$col_justb_main$cur_justb\033[0;1m]\n"
+	printf "\033[00;1m  2\033[0;00m -─ \033[1mCarousel Effect "
+	printf "\033[0;30m$_dot_len_caref_org\033[1;39m[$col_caref_main$cur_caref\033[0;1m]\n"
+	printf "\033[00;1m  3\033[0;00m -─ \033[1mNow Playing "
+	printf "\033[0;30m${_dot_len_nowplyscrn_org}\033[1;39m[$col_nowplyscrn_main$cur_nowplyscrn\033[0;1m]\n"
+	printf "\033[00;1m  x\033[0;00m -─ \033[1;30mExit\n\n"
+	just_b () {
+		if [[ ! $justb == unset ]]; then
+			printf "  \033[1mJust Black "
+			printf "\033[0;30m$_dot_len_justb_sel\033[0;1m[\033[35m$sel_justb\033[0;1m]\n"
+			printf ""
+			[[ $_stop_in_b == 0 ]] && ((_loading_redraw_len_main+=1)) && _stop_in_b=1
+		fi
+	}
+	car_ef () {
+		if [[ ! $caref == "unset" ]]; then
+			printf "  \033[1mCarousel Effect "
+			printf "\033[0;30m$_dot_len_caref_sel\033[0;1m[\033[35m$sel_caref\033[0;1m]\n"
+			printf ""
+			[[ $_stop_in_c == 0 ]] && ((_loading_redraw_len_main+=1)) && _stop_in_c=1
+		fi
+	}
+	nps () {
+		if [[ ! $nowplyscrn == "unset" ]]; then
+			printf "  \033[1mNow Playing "
+			printf "\033[0;30m$_dot_len_nowplyscrn_sel\033[0;1m[\033[35m$sel_nowplyscrn\033[0;1m]\n"
+			printf ""
+			[[ $_stop_in_p == 0 ]] && ((_loading_redraw_len_main+=1)) && _stop_in_p=1
+		fi
+	}
+	if [[ ! $justb == "unset" || ! $caref == "unset" || ! $nowplyscrn == "unset" ]]; then
+		printf "     \033[0;33mCurrently Selected\033[0m\n\n"
+		just_b
+		car_ef
+		nps
+		printf "\n"
+		printf "\033[30;1m"
+		printf "  w\033[0m -─ \033[30;1mWrite \033[0;30m........\033[39;1m[\033[35mShared Pref\033[39m]\n"
+		printf "\033[32;1m"
+		printf "  a\033[0m -─ \033[32;1mApply \033[0;30m......\033[39;1m[\033[35mRestart Retro\033[39m]\n\n"
+		[[ $_stop_in == 0 ]] && ((_loading_redraw_len_main+=5)) && _stop_in=1
+	fi
+	local do_again=0
+	prompt () {
+		choose_one
+		new_term_height=$(stty size)
+		[[ ${new_term_height%\ [0-9]*} -lt $_loading_redraw_len_main ]] && redraw_loading=1
+		#echo "$new_term_height ---> $_loading_redraw_len_main" >> debug.log
+		case $_choice in
+			1)
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn
+				intra_just_black
+
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn
+				[[ $redraw_main_menu == 1 ]] && redraw_main_menu=0 && main_menu
+				;;
+			2)
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn
+				intra_carousel
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn
+				[[ $redraw_main_menu == 1 ]] && redraw_main_menu=0 && main_menu
+				;;
+			3)
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn
+				intra_now_playing
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn
+				[[ $redraw_main_menu == 1 ]] && redraw_main_menu=0 && main_menu
+				;;
+			w)
+				if [[ ! $justb == "unset" || ! $caref == "unset" || ! $nowplyscrn == "unset" ]]; then
+					write
+					[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn && main_menu
+					[[ $redraw_main_menu == 1 ]] && redraw_main_menu=0 && main_menu
+				else
+					invalid_input
+					[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn && main_menu
+					do_again=1 && return
+				fi
+				;;
+			a)
+				if [[ ! $justb == "unset" || ! $caref == "unset" || ! $nowplyscrn == "unset" ]]; then
+					apply
+				else
+					invalid_input
+					[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn && main_menu
+					do_again=1 && return
+				fi
+
+				;;
+			x)
+				exit 2
+				;;
+			*)
+				invalid_input
+				[[ $redraw_loading == 1 ]] && redraw_loading=0 && loading_scrn && main_menu
+				do_again=1 && return
+				;;
+		esac
+	do_again=0
+	}
+	prompt
+	while [[ $do_again == 1 ]]
+	do
+		prompt
+	done
+	#printf ""
+}
+
+interactive () {
+	get_just_black
+	get_carousel_effect
+	get_now_playing_screen
+	_dot_len_justb_org=$(printf "%.0s." $(seq 1 $(get_dot_length 16 "$cur_justb" 2)))
+	_dot_len_caref_org=$(printf "%.0s." $(seq 1 $(get_dot_length 11 "$cur_caref" 2)))
+	_dot_len_nowplyscrn_org=$(printf "%.0s." $(seq 1 $(get_dot_length 15 "$cur_nowplyscrn" 2)))
+	loading_scrn
+	main_menu
+}
+
+interactive
+exit
+
+for i in "$@"
+do
+	let "argc=argc+1"
+	if [[ ${skiparg} -eq 0 ]]; then
+		case "$i" in
+			-nps|--now-playing-screen)
+				let "argc=argc+1"
+				case "${!argc}" in
+					[0-9]*)
+						nowplyscrn="${!argc}"
+						skiparg=1
+						;;
+					*)
+						showplyscrns=1
+						;;
+				esac
+				let "argc=argc-1"
+				;;
+			-jb|--just-black)
+				let "argc=argc+1"
+				case "${!argc}" in
+					[Oo][Nn])
+						justb=true
+						just_black
+						;;
+					[Oo][Ff][Ff])
+						justb=false
+						just_black
+						;;
+					*)
+						usage
+						;;
+				esac
+				let "argc=argc-1"
+				skiparg=1
+				;;
+			-ce|--carousel-effect)
+				let "argc=argc+1"
+				case "${!argc}" in
+					[Oo][Nn])
+						caref=true
+						carousel_effect
+						;;
+					[Oo][Ff][Ff])
+						caref=false
+						carousel_effect
+						;;
+					*)
+						usage
+						;;
+				esac
+				let "argc=argc-1"
+				skiparg=1
+				;;
+			*)
+				usage
+				;;
+		esac
+	else
+		skiparg=0
+	fi
+done
+
+
+[ $showplyscrns == 1 ] && choose-nps
+
+
+
+
+
+
+#sed  "/black_theme/{s/=\"[A-Za-z]*\"/=\"false\"/g}" code.name.monkey.retromusic_preferences.xml
+#value=5
+#eval "sed "/now_playing_screen/{s/=\"[0-9]*\"/=\"${value}\"/}" <<<"$1""
+#/data/data/code.name.monkey.retromusic/shared_prefs/code.name.monkey.retromusic_preferences.xml

@@ -19,7 +19,7 @@ Remote_dir="storage/shared/Music"
 Jf_User_Name="$JF_USER_NAME"
 Jf_Mac_Addr="$JF_MAC_ADDR"
 
-ssh-add -l > /dev/null 2>&1 || ssh-add
+ssh-add -l | grep "root@localhost" > /dev/null 2>&1 || ssh-add
 
 Jf_ip_addr=$(ip neigh | grep "$Jf_Mac_Addr" | grep "\." | cut -d" " -f1)
 

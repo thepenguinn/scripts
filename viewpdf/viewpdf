@@ -1,0 +1,74 @@
+#!/bin/bash
+
+unset timestamp_file
+unset lmodt
+unset cmodt
+unset file
+unset force
+
+[[ $1 == "" ]] && exit 1
+
+check_timestamp() {
+
+	# Arg 1 --> the relative or absoulute path of the pdf file
+
+	timestamp_file="${1%.*}.tstp"
+	lmodt=$(cat $timestamp_file 2>/dev/null)
+	cmodt=$(stat --printf "%Y" "$1")
+
+	if [[ "$lmodt" == "$cmodt" ]]; then
+		return 0
+	else
+		return 1
+	fi
+
+}
+
+check_bg_activity() {
+
+	local tmp
+
+	tmp=$(rish -c "dumpsys -t 1 activity com.mixplorer | grep -o EBookReaderActivity")
+
+	if [[ -z $tmp ]]; then
+		return 1
+	else
+		return 0
+	fi
+
+}
+
+open_pdf() {
+
+	# Arg 1 --> the relative or absoulute path of the pdf file
+
+	if ! check_timestamp "$1" || ! check_bg_activity || [[ $force == 1 ]]; then
+
+		termux-share -d "$1"
+        # we don't need this because termux-share has a -d option
+		# rish -c "input tap 812 300"
+		printf "$cmodt" > "$timestamp_file"
+
+	else
+
+		rish -c "/system/bin/am start com.mixplorer/.activities.EBookReaderActivity"
+
+	fi
+
+}
+
+for arg in "$@"
+do
+	case "$arg" in
+		-f|--force)
+			force=1
+			;;
+		*)
+			file="$arg"
+			;;
+	esac
+done
+
+open_pdf "$file"
+
+exit 0

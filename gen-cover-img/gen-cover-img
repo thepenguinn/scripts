@@ -1,0 +1,11 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+# 0             1    2     3        4          5             6               7        8
+# gen-cover-img font title subtitle title_path subtitle_path background_path tmp_path output_path
+# make sure to mkdir the parent directories to the path
+
+convert -background none -fill black -font "${1}" -pointsize 65 -size 600x810 -gravity north caption:"${2}" "${4}"
+convert -background none -fill black -font "${1}" -pointsize 60 -size 600x810 -gravity south caption:"${3}" "${5}"
+convert -size 800x1080 xc:white "${6}"
+composite -gravity center "${4}" "${6}" "${7}"
+composite -gravity center "${5}" "${7}" "${8}"

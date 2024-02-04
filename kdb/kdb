@@ -38,7 +38,7 @@ check_kindle () {
 	# adding ssh key to ssh-agent if no ssh keys have been added.
 	# we've only one ssh key... otherwise we need to check the specific key using
 	# for kindle.
-	ssh-add -l > /dev/null 2>&1 || ssh-add
+	ssh-add -l | grep "root@localhost" > /dev/null 2>&1 || ssh-add
 	# checking whether ssh could connect to kindle otherwise calling no_kindle
 	if timeout 2 ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder echo > /dev/null 2>&1 ; then
 		return 0

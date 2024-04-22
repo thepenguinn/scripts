@@ -5,6 +5,7 @@ unset lmodt
 unset cmodt
 unset file
 unset force
+unset back
 
 [[ $1 == "" ]] && exit 1
 
@@ -42,9 +43,16 @@ open_pdf() {
 
 	# Arg 1 --> the relative or absoulute path of the pdf file
 
+    [[ $force == 1 ]] && rish -c "echo"
+
 	if ! check_timestamp "$1" || ! check_bg_activity || [[ $force == 1 ]]; then
 
-		termux-share -d "$1"
+        if [[ $back == 0 ]]; then
+            termux-share -d "$1"
+        else
+            cp "$1" /sdcard/tmp/tmp.pdf
+            rish -c "/system/bin/am start -a android.intent.action.VIEW -d file:///sdcard/tmp/tmp.pdf -t application/pdf"
+        fi
         # we don't need this because termux-share has a -d option
 		# rish -c "input tap 812 300"
 		printf "$cmodt" > "$timestamp_file"
@@ -63,6 +71,9 @@ do
 		-f|--force)
 			force=1
 			;;
+        -b|--background)
+            back=1
+            ;;
 		*)
 			file="$arg"
 			;;

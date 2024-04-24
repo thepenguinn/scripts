@@ -73,7 +73,7 @@ else
     tmux attach
 fi
 
-tmux switch-client -t$session_name:0
+tmux switch-client -t$session_name
 tmux previous-layout
 
 exit 0

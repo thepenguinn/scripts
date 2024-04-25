@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if tmux has-session -t __tmp; then
+    tmux set -g @_last_session $(tmux display-message -p \#S):$(tmux display-message -p \#I)
+else
+    tmux set -g @_last_session $(tmux display-message -p \#S):$(tmux display-message -p \#I)
+    tmux new-session -ds __tmp ~/.local/bin/tss
+fi
+tmux switch-client -t __tmp

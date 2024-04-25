@@ -46,6 +46,8 @@ create_session () {
         tmux new-window -t$session_name
         tmux send-keys -t$session_name:1 "cd $session" Enter
         tmux send-keys -t$session_name:1 "nvim" Enter
+        tmux new-window -t$session_name
+        tmux send-keys -t$session_name:2 "w3m duckduckgo.com" Enter
     fi
 }
 

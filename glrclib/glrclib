@@ -1,0 +1,102 @@
+#!/bin/bash
+#
+
+unset Meta
+unset Artists
+unset Title
+unset Query
+unset File
+
+Retro_dir="/sdcard/RetroMusic"
+
+mkdir "${Retro_dir}/json" > /dev/null 2>&1
+mkdir "${Retro_dir}/lyrics" > /dev/null 2>&1
+
+# First Arg --> path to the wfile
+gen_meta() {
+
+    printf "${1}"
+    Meta="$(id3ted -l "${1}")"
+
+    if [[ -z "${Meta}" ]]; then
+        exit 1
+    fi
+
+    if [[ -z "${Title}" ]]; then
+        Title=$(grep "^TIT2: " <<<"${Meta}" | sed 's/^TIT2: //')
+    fi
+
+    if [[ -z "${Artists}" ]]; then
+        Artists=$(grep "^TPE1: " <<<"${Meta}" | sed 's/^TPE1: //')
+    fi
+
+}
+
+gen_lrc() {
+
+    local q_artists
+    local q_title
+    local response
+    local synced
+
+    if [[ -z "${Query}" ]]; then
+        q_title="$(tr " " "+" <<<"$Title" | tr "‘" "'")"
+        q_artists="$(tr " " "+" <<<"$Artists")"
+        Query="${q_title}+${q_artists}"
+    fi
+
+    response="$(curl -s "https://lrclib.net/api/search?q=${Query}")"
+
+    if [[ "$response" =~ "[]" ]]; then
+        exit 1
+    fi
+
+    echo "{\"query\": {\"title\": \"${Title}\", \"artists\": \"${Artists}\", \"queryString\": \"${Query}\", \"file\": \"${File}\"}, \"response\": ${response} }" > "${Retro_dir}/json/${Title} - ${Artists}.json"
+
+    synced="$(jq -r '[(.[] | select(.syncedLyrics != null))][0]["syncedLyrics"]' <<<"${response}")"
+
+    if [[ -z "$synced" ]]; then
+        exit 1
+    fi
+
+    printf "$synced\n" > "${Retro_dir}/lyrics/${Title} - ${Artists}.lrc"
+
+}
+
+while [ : ]
+do
+    [[ "${1}" == "" ]] && break
+    case "${1}" in
+        --title)
+            shift 1
+            Title="${1}"
+            ;;
+        --artists)
+            shift 1
+            Artists="${1}"
+            ;;
+        --query)
+            shift 1
+            Query="${1}"
+            ;;
+        *)
+            File="${1}"
+            ;;
+    esac
+
+    shift 1
+done
+
+File=$(readlink -e "${File}")
+
+if [[ -z "$File" ]]; then
+    exit 1
+fi
+
+if [[ -z "$Artists" || -z "$Title" ]]; then
+    gen_meta "$File"
+fi
+
+gen_lrc
+
+exit 0

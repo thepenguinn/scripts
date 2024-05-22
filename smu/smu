@@ -65,6 +65,7 @@ rsync_lrcs() {
         artists=$(grep "^TPE1: " <<<"${meta}" | sed 's/^TPE1: //')
 
         clean_artists "$artists" "$file"
+        artists=$(tr "/" "," <<<"$artists")
 
         if [[ ! -f "${Retro_lyrics_dir}/${title} - ${artists}.lrc" ]]; then
             echo "Querying for ${title} - ${artists}..."

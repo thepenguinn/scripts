@@ -15,6 +15,7 @@ if [[ $JF_MAC_ADDR == "" ]]; then
 fi
 
 Neko_dir="/sdcard/Music/NekoX"
+Retro_lyrics_dir="/sdcard/RetroMusic/lyrics"
 Remote_dir="storage/shared/Music"
 Jf_User_Name="$JF_USER_NAME"
 Jf_Mac_Addr="$JF_MAC_ADDR"
@@ -24,6 +25,66 @@ ssh-add -l | grep "root@localhost" > /dev/null 2>&1 || ssh-add
 Jf_ip_addr=$(ip neigh | grep "$Jf_Mac_Addr" | grep "\." | cut -d" " -f1)
 
 Selected=$(ls --sort=time  -1 ${Neko_dir} | fzf -m)
+
+unset Meta
+unset Title
+
+# First Arg --> Current Artists Second Arg --> File
+clean_artists() {
+
+    local cleaned_artists
+
+    if grep "/" <<<"$1" > /dev/null ; then
+        cleaned_artists="$(sed 's#/#,#g' <<<"$1")"
+        id3ted --TPE1 "${cleaned_artists}" "$2"
+    fi
+
+}
+
+rsync_lrcs() {
+
+    local file
+    local meta
+    local title
+    local artists
+
+    local remote
+
+    local lrcs_to_send=""
+
+    while read -r line
+    do
+        if [[ ${line} =~ ^/ ]]; then
+            file="${line}"
+        else
+            file="$Neko_dir/${line}"
+        fi
+
+        meta=$(id3ted -l "$file")
+        title=$(grep "^TIT2: " <<<"${meta}" | sed 's/^TIT2: //')
+        artists=$(grep "^TPE1: " <<<"${meta}" | sed 's/^TPE1: //')
+
+        clean_artists "$artists" "$file"
+
+        if [[ ! -f "${Retro_lyrics_dir}/${title} - ${artists}.lrc" ]]; then
+            echo "Querying for ${title} - ${artists}..."
+            if glrclib --title "$title" --artists "$artists" "$file" ; then
+
+                lrcs_to_send+="\"${Retro_lyrics_dir}/${title} - ${artists}.lrc\" "
+            fi
+        else
+            lrcs_to_send+="\"${Retro_lyrics_dir}/${title} - ${artists}.lrc\" "
+        fi
+
+    done <<<"${@}"
+
+    if [[ ! -z "$lrcs_to_send" ]]; then
+        remote="${Jf_User_Name}@${Jf_ip_addr}:${Retro_lyrics_dir}/"
+
+        eval "command rsync -rvuP -e \"ssh -p 8022 -o StrictHostKeyChecking=no\" "${lrcs_to_send}" "${remote}""
+    fi
+
+}
 
 ssh_media_scan() {
 
@@ -39,7 +100,7 @@ ssh_media_scan() {
 
 }
 
-rsync_push() {
+rsync_files() {
 
     local source=""
     local line
@@ -56,8 +117,11 @@ rsync_push() {
 
 }
 
+
+
 if [[ "$Selected" != "" ]]; then
-    rsync_push "$Selected"
+    rsync_lrcs "$Selected"
+    rsync_files "$Selected"
     ssh_media_scan "$Selected"
 else
     exit 1

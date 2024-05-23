@@ -26,6 +26,8 @@ Jf_ip_addr=$(ip neigh | grep "$Jf_Mac_Addr" | grep "\." | cut -d" " -f1)
 
 Selected=$(ls --sort=time  -1 ${Neko_dir} | fzf -m)
 
+# Selected="$(find ${Neko_dir} -iname "*.mp3" -printf "%T+ %p\n" | sort -n | sed "s/^[^ ]* //" | fzf -m )"
+
 unset Meta
 unset Title
 
@@ -41,7 +43,7 @@ clean_artists() {
 
 }
 
-rsync_lrcs() {
+attach_lyrics() {
 
     local file
     local meta
@@ -49,8 +51,6 @@ rsync_lrcs() {
     local artists
 
     local remote
-
-    local lrcs_to_send=""
 
     while read -r line
     do
@@ -61,29 +61,19 @@ rsync_lrcs() {
         fi
 
         meta=$(id3ted -l "$file")
-        title=$(grep "^TIT2: " <<<"${meta}" | sed 's/^TIT2: //')
+        title=$(grep "^TIT2: " <<<"${meta}" | sed 's/^TIT2: //' | tr ":" "_" | tr "/" "_")
         artists=$(grep "^TPE1: " <<<"${meta}" | sed 's/^TPE1: //')
 
         clean_artists "$artists" "$file"
-        artists=$(tr "/" "," <<<"$artists")
+        artists=$(tr "/" "," <<<"$artists" | tr ":" "_")
 
-        if [[ ! -f "${Retro_lyrics_dir}/${title} - ${artists}.lrc" ]]; then
-            echo "Querying for ${title} - ${artists}..."
-            if glrclib --title "$title" --artists "$artists" "$file" ; then
-
-                lrcs_to_send+="\"${Retro_lyrics_dir}/${title} - ${artists}.lrc\" "
-            fi
-        else
-            lrcs_to_send+="\"${Retro_lyrics_dir}/${title} - ${artists}.lrc\" "
+        if ! grep "^USLT: \[synced\](XXX):" <<<"$meta" > /dev/null \
+            || ! grep "^USLT: \[plain\](XXX):" <<<"$meta" > /dev/null ; then
+                    echo "Querying for ${title} - ${artists}..."
+                    glrclib --title "$title" --artists "$artists" "$file"
         fi
 
     done <<<"${@}"
-
-    if [[ ! -z "$lrcs_to_send" ]]; then
-        remote="${Jf_User_Name}@${Jf_ip_addr}:${Retro_lyrics_dir}/"
-
-        eval "command rsync -rvuP -e \"ssh -p 8022 -o StrictHostKeyChecking=no\" "${lrcs_to_send}" "${remote}""
-    fi
 
 }
 
@@ -103,7 +93,7 @@ ssh_media_scan() {
 
 rsync_files() {
 
-    local source=""
+    local source
     local line
     local remote
 
@@ -111,17 +101,17 @@ rsync_files() {
 
     while read -r line
     do
-        [[ ${line} =~ ^/ ]] && source+="\"${line}\" " || source+="\"$Neko_dir/${line}\" "
+        [[ ${line} =~ ^/ ]] && source+=( "${line}" ) || source+=( "$Neko_dir/${line}" )
     done <<<"${@}"
 
-    eval "command rsync -rvuP -e \"ssh -p 8022 -o StrictHostKeyChecking=no\" "${source}" "${remote}""
+    command rsync -rvuP -e "ssh -p 8022 -o StrictHostKeyChecking=no" "${source[@]}" "${remote}"
 
 }
 
 
 
 if [[ "$Selected" != "" ]]; then
-    rsync_lrcs "$Selected"
+    attach_lyrics "$Selected"
     rsync_files "$Selected"
     ssh_media_scan "$Selected"
 else

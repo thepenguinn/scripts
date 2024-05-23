@@ -5,13 +5,22 @@ unset Artists
 unset Title
 unset Query
 unset File
+unset Selected
+
+Exit_Status=0
 
 unset Verbose
+Modify=1
 
 Retro_dir="/sdcard/RetroMusic"
+Neko_dir="/sdcard/Music/NekoX"
 
 mkdir "${Retro_dir}/json" > /dev/null 2>&1
 mkdir "${Retro_dir}/lyrics" > /dev/null 2>&1
+mkdir "${Retro_dir}/plain" > /dev/null 2>&1
+
+# mkdir -p "~/retromusic/json" > /dev/null 2>&1
+# mkdir "~/retromusic/lyrics" > /dev/null 2>&1
 
 verbose_log() {
 
@@ -28,7 +37,8 @@ gen_meta() {
 
     if [[ -z "${Meta}" ]]; then
         verbose_log "No metadata"
-        exit 1
+        Exit_Status=1
+        return
     fi
 
     if [[ -z "${Title}" ]]; then
@@ -47,6 +57,7 @@ gen_lrc() {
     local q_title
     local response
     local synced
+    local plain
 
     if [[ -z "${Query}" ]]; then
         q_title="$(tr " " "+" <<<"$Title" | tr "‘" "'" | tr -d "\"")"
@@ -58,22 +69,70 @@ gen_lrc() {
 
     if [[ "$response" =~ "[]" ]]; then
         verbose_log "No response"
-        exit 1
+        if [[ ! -z $q_title ]]; then
+            verbose_log "querying with title"
+            response="$(curl -s "https://lrclib.net/api/search?q=${q_title}")"
+            if [[ "$response" =~ "[]" ]]; then
+                verbose_log "Still No response"
+                Exit_Status=1
+                return
+            fi
+        else
+            Exit_Status=1
+            return
+        fi
     fi
+
+    # Android doesn't like '"' and ':'
+    Title="$(tr "\"" "_" <<<"$Title" | tr ":" "_")"
+    Artists="$(tr "\"" "_" <<<"$Artists" | tr ":" "_")"
 
     echo "{\"query\": {\"title\": \"${Title}\", \"artists\": \"${Artists}\", \"queryString\": \"${Query}\", \"file\": \"${File}\"}, \"response\": ${response} }" > "${Retro_dir}/json/${Title} - ${Artists}.json"
 
-    synced="$(jq -r '[(.[] | select(.syncedLyrics != null))][0]["syncedLyrics"]' <<<"${response}")"
+    synced="$(jq -r '[(.[] | select(.syncedLyrics != null))][0]["syncedLyrics"]' <<<"${response}" | sed "s/\] /\]/")"
+
+    plain="$(jq -r '[(.[] | select(.plainLyrics != null))][0]["plainLyrics"]' <<<"${response}")"
 
     if [[ -z "$synced" ]]; then
         verbose_log "No synced"
-        exit 1
+        Exit_Status=1
+        return
     fi
 
     printf "$synced\n" > "${Retro_dir}/lyrics/${Title} - ${Artists}.lrc"
 
+    printf "$plain\n" > "${Retro_dir}/plain/${Title} - ${Artists}.txt"
+
+    if [[ "$Modify" == 1 && ! -z "$File" ]]; then
+        id3ted -d "#" --USLT "$(printf "$synced\n")#plain" "$File"
+        id3ted -d "#" --USLT "$(printf "$synced\n")#synced" "$File"
+    fi
+
+    # printf "$synced\n" > "~/retromusic/lyrics/${Title} - ${Artists}.lrc"
+
 }
 
+main() {
+
+    File=$(readlink -e "${File}")
+
+    if [[ -z "$File" ]]; then
+        if [[ -z "$Artists" || -z "$Title" ]]; then
+            verbose_log "No File"
+            return 1
+        fi
+    fi
+
+    if [[ -z "$Artists" || -z "$Title" ]]; then
+        gen_meta "$File"
+        if [[ "${1}" == "EXIT_ON_FAILURE" && "${Exit_Status}" == 1 ]]; then
+            exit 1
+        fi
+    fi
+
+    gen_lrc
+
+}
 while [ : ]
 do
     [[ "${1}" == "" ]] && break
@@ -93,6 +152,9 @@ do
         --verbose)
             Verbose=1
             ;;
+        --do-not-modify)
+            Modify=0
+            ;;
         *)
             File="${1}"
             ;;
@@ -101,19 +163,19 @@ do
     shift 1
 done
 
-File=$(readlink -e "${File}")
-
-if [[ -z "$File" ]]; then
-    if [[ -z "$Artists" || -z "$Title" ]]; then
-        verbose_log "No File"
-        exit 1
-    fi
+if [[ -z "$Artists" && -z "$Title" && -z "$Query" && -z "$File" ]]; then
+    Selected=$(ls --sort=time  -1 ${Neko_dir} | fzf -m)
+    while read -r line
+    do
+        File="${Neko_dir}/${line}"
+        unset Artists
+        unset Title
+        unset Query
+        main
+    done <<<"${Selected}"
+    exit
 fi
 
-if [[ -z "$Artists" || -z "$Title" ]]; then
-    gen_meta "$File"
-fi
+main "EXIT_ON_FAILURE"
 
-gen_lrc
-
-exit 0
+exit $Exit_Status

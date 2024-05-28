@@ -54,6 +54,18 @@ gen_meta() {
 
 }
 
+# First Arg --> Current Artists Second Arg --> File
+clean_artists() {
+
+    local cleaned_artists
+
+    if grep "/" <<<"$1" > /dev/null ; then
+        cleaned_artists="$(sed 's#/#,#g' <<<"$1")"
+        id3ted --TPE1 "${cleaned_artists}" "$2"
+    fi
+
+}
+
 gen_lrc() {
 
     local q_artists
@@ -86,6 +98,9 @@ gen_lrc() {
             return
         fi
     fi
+
+    clean_artists "$Artists" "$File"
+    Artists=$(tr "/" "," <<<"$Artists")
 
     # Android doesn't like '"' and ':'
     Title="$(tr "\"" " " <<<"$Title" | tr ":" " ")"

@@ -61,11 +61,11 @@ attach_lyrics() {
         fi
 
         meta=$(id3ted -l "$file")
-        title=$(grep "^TIT2: " <<<"${meta}" | sed 's/^TIT2: //' | tr ":" "_" | tr "/" "_")
+        title=$(grep "^TIT2: " <<<"${meta}" | sed 's/^TIT2: //' | tr ":" " " | tr "/" " ")
         artists=$(grep "^TPE1: " <<<"${meta}" | sed 's/^TPE1: //')
 
         clean_artists "$artists" "$file"
-        artists=$(tr "/" "," <<<"$artists" | tr ":" "_")
+        artists=$(tr "/" "," <<<"$artists" | tr ":" " ")
 
         if ! grep "^USLT: \[synced\](XXX):" <<<"$meta" > /dev/null \
             || ! grep "^USLT: \[plain\](XXX):" <<<"$meta" > /dev/null ; then

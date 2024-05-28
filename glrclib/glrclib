@@ -11,6 +11,9 @@ Exit_Status=0
 
 unset Verbose
 Modify=1
+More_than_one_file=0
+
+declare -a Given_files
 
 Retro_dir="/sdcard/RetroMusic"
 Neko_dir="/sdcard/Music/NekoX"
@@ -155,6 +158,25 @@ do
         --do-not-modify)
             Modify=0
             ;;
+        --files)
+            More_than_one_file=1
+            while [ : ]
+            do
+                shift 1
+                if [[ ! -z "${1}" ]] && [[ ! "${1}" =~ ^--.* ]]; then
+                    if [[ -f "${1}" ]]; then
+                        echo yes
+                        Given_files+=( "${1}" )
+                    fi
+                else
+                    if [[ "${1}" =~ ^--.* ]]; then
+                        shift -1
+                    fi
+                    break
+                fi
+
+            done
+            ;;
         *)
             File="${1}"
             ;;
@@ -163,7 +185,20 @@ do
     shift 1
 done
 
-if [[ -z "$Artists" && -z "$Title" && -z "$Query" && -z "$File" ]]; then
+if [[ "$More_than_one_file" == 1 ]]; then
+    for line in "${Given_files[@]}"
+    do
+        File="${line}"
+        unset Artists
+        unset Title
+        unset Query
+        main
+    done
+    exit
+fi
+
+# if [[ -z "$Artists" && -z "$Title" && -z "$Query" && -z "$File" ]]; then
+if [[ -z "$Artists" && -z "$Title" && -z "$File" ]]; then
     Selected=$(ls --sort=time  -1 ${Neko_dir} | fzf -m)
     while read -r line
     do

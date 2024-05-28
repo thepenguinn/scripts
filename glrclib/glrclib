@@ -88,8 +88,8 @@ gen_lrc() {
     fi
 
     # Android doesn't like '"' and ':'
-    Title="$(tr "\"" "_" <<<"$Title" | tr ":" "_")"
-    Artists="$(tr "\"" "_" <<<"$Artists" | tr ":" "_")"
+    Title="$(tr "\"" " " <<<"$Title" | tr ":" " ")"
+    Artists="$(tr "\"" " " <<<"$Artists" | tr ":" " ")"
 
     echo "{\"query\": {\"title\": \"${Title}\", \"artists\": \"${Artists}\", \"queryString\": \"${Query}\", \"file\": \"${File}\"}, \"response\": ${response} }" > "${Retro_dir}/json/${Title} - ${Artists}.json"
 

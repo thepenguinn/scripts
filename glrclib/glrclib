@@ -68,6 +68,7 @@ gen_lrc() {
         Query="${q_title}+${q_artists}"
     fi
 
+    verbose_log "Querying for ${Title} - ${Artists}..."
     response="$(curl -s "https://lrclib.net/api/search?q=${Query}")"
 
     if [[ "$response" =~ "[]" ]]; then
@@ -99,16 +100,21 @@ gen_lrc() {
     if [[ -z "$synced" ]]; then
         verbose_log "No synced"
         Exit_Status=1
-        return
+    else
+        printf "$synced\n" > "${Retro_dir}/lyrics/${Title} - ${Artists}.lrc"
+        if [[ "$Modify" == 1 && ! -z "$File" ]]; then
+            id3ted -d "#" --USLT "$(printf "$synced\n")#synced" "$File"
+        fi
     fi
 
-    printf "$synced\n" > "${Retro_dir}/lyrics/${Title} - ${Artists}.lrc"
-
-    printf "$plain\n" > "${Retro_dir}/plain/${Title} - ${Artists}.txt"
-
-    if [[ "$Modify" == 1 && ! -z "$File" ]]; then
-        id3ted -d "#" --USLT "$(printf "$synced\n")#plain" "$File"
-        id3ted -d "#" --USLT "$(printf "$synced\n")#synced" "$File"
+    if [[ -z "$plain" ]]; then
+        verbose_log "No plain"
+        Exit_Status=1
+    else
+        printf "$plain\n" > "${Retro_dir}/plain/${Title} - ${Artists}.txt"
+        if [[ "$Modify" == 1 && ! -z "$File" ]]; then
+            id3ted -d "#" --USLT "$(printf "$plain\n")#plain" "$File"
+        fi
     fi
 
     # printf "$synced\n" > "~/retromusic/lyrics/${Title} - ${Artists}.lrc"

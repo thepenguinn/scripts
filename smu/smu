@@ -14,7 +14,7 @@ if [[ $JF_MAC_ADDR == "" ]]; then
     exit 1
 fi
 
-Neko_dir="/sdcard/Music/NekoX"
+Neko_dir="/sdcard/Music/sdl"
 Retro_lyrics_dir="/sdcard/RetroMusic/lyrics"
 Remote_dir="storage/shared/Music"
 Jf_User_Name="$JF_USER_NAME"
@@ -111,7 +111,7 @@ rsync_files() {
 
 
 if [[ "$Selected" != "" ]]; then
-    attach_lyrics "$Selected"
+    # attach_lyrics "$Selected"
     rsync_files "$Selected"
     ssh_media_scan "$Selected"
 else

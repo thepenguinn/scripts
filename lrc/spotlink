@@ -1,5 +1,4 @@
-#!/system/xbin/bash
-
+#!/bin/bash
 
 argc=0
 qryin=0
@@ -9,9 +8,14 @@ silent=0
 debug=0
 
 query_spotify() {
-	link=$(curl -s "https://www.google.com/search?q="${query}"+site%3Aspotify.com&ei=JVlSYtHCA-6MseMPwNGeiAc&ved=0ahUKEwiR6fbF0Ij3AhVuRmwGHcCoB3EQ4dUDCA4&uact=5&oq=hate+to+be+lame+lizzy+site%3Aspotify.com&gs_lcp=Cgdnd3Mtd2l6EANKBAhBGABKBAhGGABQAFi1c2C5dmgEcAF4AIAByQGIAfkikgEGMC4zMC4xmAEAoAEBwAEB&sclient=gws-wiz"  -H "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.3 Chrome/87.0.4280.144 Safari/537.36" | grep -o "https://open.spotify.com/"${content}"/.*\"" | awk -F "\"" '{print $1}' | head -n 1)
 
-	[[ ${debug} == 0 ]] && [[ ! ${link} == "" ]] && am start com.shabinder.spotiflyer/com.shabinder.spotiflyer.MainActivity > /dev/null 2>&1 &
+    res=$(curl -s "https://www.google.com/search?q="${query}"+site%3Aspotify.com&ei=JVlSYtHCA-6MseMPwNGeiAc&ved=0ahUKEwiR6fbF0Ij3AhVuRmwGHcCoB3EQ4dUDCA4&uact=5&oq=hate+to+be+lame+lizzy+site%3Aspotify.com&gs_lcp=Cgdnd3Mtd2l6EANKBAhBGABKBAhGGABQAFi1c2C5dmgEcAF4AIAByQGIAfkikgEGMC4zMC4xmAEAoAEBwAEB&sclient=gws-wiz"  -H "user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.15.3 Chrome/87.0.4280.144 Safari/537.36")
+
+    # echo "${res}" > shit.html
+
+    link=$(grep -o "https://open.spotify.com/"${content}"/.*\"" <<<"${res}" | awk -F "\"" '{print $1}' | head -n 1)
+
+    # [[ ${debug} == 0 ]] && [[ ! ${link} == "" ]] && am start com.shabinder.spotiflyer/com.shabinder.spotiflyer.MainActivity > /dev/null 2>&1 &
 }
 
 query_youtubemusic(){

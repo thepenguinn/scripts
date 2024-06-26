@@ -16,7 +16,7 @@ More_than_one_file=0
 declare -a Given_files
 
 Retro_dir="/sdcard/RetroMusic"
-Neko_dir="/sdcard/Music/sdl"
+Music_dirs="/sdcard/Music/sdl:/sdcard/Music/NekoX:/sdcard/Music/NekoX/sunburn"
 
 mkdir "${Retro_dir}/json" > /dev/null 2>&1
 mkdir "${Retro_dir}/lyrics" > /dev/null 2>&1
@@ -74,14 +74,14 @@ gen_lrc() {
     local synced
     local plain
 
+    clean_artists "$Artists" "$File"
+    Artists=$(tr "/" "," <<<"$Artists")
+
     if [[ -z "${Query}" ]]; then
         q_title="$(tr " " "+" <<<"$Title" | tr "‘" "'" | tr -d "\"")"
         q_artists="$(tr " " "+" <<<"$Artists" | tr -d "\"")"
         Query="${q_title}+${q_artists}"
     fi
-
-    clean_artists "$Artists" "$File"
-    Artists=$(tr "/" "," <<<"$Artists")
 
     verbose_log "Querying for ${Title} - ${Artists}..."
     verbose_log "Query: ${Query}"
@@ -94,8 +94,13 @@ gen_lrc() {
             response="$(curl -s "https://lrclib.net/api/search?q=${q_title}")"
             if [[ "$response" =~ "[]" ]]; then
                 verbose_log "Still No response"
-                Exit_Status=1
-                return
+                verbose_log "querying with title that has only alphabets"
+                q_title="$(sed "s/[^A-Za-z+]//g" <<<"${q_title}")"
+                response="$(curl -s "https://lrclib.net/api/search?q=${q_title}")"
+                if [[ "$response" =~ "[]" ]]; then
+                    Exit_Status=1
+                    return
+                fi
             fi
         else
             Exit_Status=1
@@ -220,15 +225,40 @@ fi
 
 # if [[ -z "$Artists" && -z "$Title" && -z "$Query" && -z "$File" ]]; then
 if [[ -z "$Artists" && -z "$Title" && -z "$File" ]]; then
-    Selected=$(ls --sort=time  -1 ${Neko_dir} | fzf -m)
+
+    # TODO: clean this
+    declare -a _Music_dir
+    Files=""
+    Selected=""
+
+    idx=0
+    while read -r dir
+    do
+        _Music_dir+=("$dir")
+        Files+=$(ls --sort=time -1 "${dir}" | sed "s#^#$idx #")
+        Files+=$'\n'
+        idx=$((idx+1))
+    done <<<"$(tr ":" "\n" <<<"$Music_dirs")"
+
+    Selected=$(sed "\$d" <<<"$Files" | fzf -m --with-nth "2..")
+
+    if [[ -z "$Selected" ]]; then
+        echo "No selections were made, exiting..."
+        exit
+    fi
+
     while read -r line
     do
-        File="${Neko_dir}/${line}"
+        idx=${line%% *}
+        file=${line#* }
+
+        File="${_Music_dir[$idx]}/${file}"
         main
         unset Artists
         unset Title
         unset Query
     done <<<"${Selected}"
+
     exit
 fi
 

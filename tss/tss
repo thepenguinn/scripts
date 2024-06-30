@@ -50,7 +50,12 @@ create_session () {
         tmux send-keys -t$session_name:1 "nvim" Enter
         tmux new-window -t$session_name
         tmux send-keys -t$session_name:2 "w3m duckduckgo.com" Enter
+
+        # switching to the 0th window, if you want to switch to a different
+        # window write a startup script for the session
+        tmux switch-client -t$session_name:0
     fi
+
 }
 
 if [[ ! -z $TMUX || ! -z $is_tmux_running ]]; then

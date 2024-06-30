@@ -6,6 +6,8 @@ if [[ $1 == "gen" ]]; then
     if ! tmux has-session -t general 2>/dev/null; then
         tmux new-session -ds general
         tmux new-window -t general
+        tmux new-window -t general
+        tmux send-keys -t general:2 "w3m duckduckgo.com" Enter
     fi
     if [[ -z $TMUX ]]; then
         tmux attach

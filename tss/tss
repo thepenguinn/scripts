@@ -2,17 +2,43 @@
 
 work_dirs="$HOME/projects:$HOME/projects/scripts"
 
-if [[ $1 == "gen" ]]; then
+create_general_session () {
     if ! tmux has-session -t general 2>/dev/null; then
         tmux new-session -ds general
         tmux new-window -t general
         tmux new-window -t general
         tmux send-keys -t general:2 "w3m duckduckgo.com" Enter
     fi
+}
+
+create_proot_session () {
+    if ! tmux has-session -t archlinux 2>/dev/null; then
+        tmux new-session -ds archlinux
+        tmux send-keys -t archlinux:0 "proot-distro login archlinux \
+            --bind /data/data/com.termux/files/home:/home/daniel" Enter \
+            "cd /home/daniel" Enter "/usr/sbin/sshd" Enter "su daniel" Enter \
+            "printf \"\033[2A\033[31;1m  Proot Instance: Don't use this instance directly,\n      instead ssh into this instance.\n\"" Enter
+
+    fi
+}
+
+if [[ $1 == "gen" ]]; then
+    create_proot_session
+    create_general_session
+    if [[ -z $TMUX ]]; then
+        tmux attach -t general:0
+    else
+        tmux switch-client -t general:0
+    fi
+    exit 0
+fi
+
+if [[ $1 == "arch" ]]; then
+    create_proot_session
     if [[ -z $TMUX ]]; then
         tmux attach
     fi
-    tmux switch-client -t general:0
+    tmux switch-client -t archlinux:0
     exit 0
 fi
 

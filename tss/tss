@@ -17,7 +17,7 @@ create_proot_session () {
         tmux send-keys -t archlinux:0 "proot-distro login archlinux \
             --bind /data/data/com.termux/files/home:/home/daniel" Enter \
             "cd /home/daniel" Enter "/usr/sbin/sshd" Enter "su daniel" Enter \
-            "printf \"\033[2A\033[31;1m  Proot Instance: Don't use this instance directly,\n      instead ssh into this instance.\n\"" Enter
+            "printf \"\033[4A\033[31;1m  Proot Instance: Don't use this instance directly,\n      instead ssh into this instance.\n\"" Enter
 
     fi
 }

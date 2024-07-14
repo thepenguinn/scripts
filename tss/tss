@@ -1,6 +1,16 @@
 #!/bin/bash
 
-work_dirs="$HOME/projects:$HOME/projects/scripts"
+work_dirs="$HOME/projects:$HOME/projects/scripts:$HOME/stupid:$HOME/projects/dotfiles"
+
+declare -A session_suffix_table
+
+session_suffix_table+=( \
+    ["projects.scripts"]="srp" \
+    ["projects"]="prj" \
+    ["stupid"]="stp" \
+    ["notes"]="nts" \
+    ["projects.dotfiles"]="dot" \
+)
 
 create_general_session () {
     if ! tmux has-session -t general 2>/dev/null; then
@@ -43,7 +53,7 @@ if [[ $1 == "arch" ]]; then
 fi
 
 session=$(tr ":" "\n" <<<"$work_dirs" \
-    | xargs -I {} find {} -maxdepth 1 \
+    | xargs -I {} find {} -maxdepth 1 -type d \
     | sed "1d" \
     | fzf)
 
@@ -63,16 +73,30 @@ is_tmux_running=$(pgrep tmux)
 
 session_name=$(basename "$session" | tr " " "_")
 
+parent_from_home=$(sed "s#^${HOME}/##" <<<"$session")
+parent_from_home=${parent_from_home%/*}
+suffix_hash=$(tr "/" "." <<<"$parent_from_home")
+
+if [[ ! -z "${session_suffix_table[${suffix_hash}]}" ]]; then
+    session_name="${session_suffix_table[${suffix_hash}]}-${session_name}"
+else
+    session_name="$(tr "." "_" <<<"$suffix_hash")-${session_name}"
+fi
+
 create_session () {
     if [ -f $HOME/.config/tss/startup/$session_name ]; then
-        # running the start up script for this session, if it exists
-        . $HOME/.config/tss/startup/$session_name
+        # running the start up script for this session, if it exists.
+        # first arg will be the $session_name second will be the relative
+        # path from home
+        . $HOME/.config/tss/startup/$session_name $session_name "${parent_from_home}/$(basename "$session")"
     else
         # else 0th window will be the terminal
-        # and 1st wiil be the nvim
-        tmux send-keys -t$session_name:0 "cd $session" Enter
+        # and 1st will be the nvim
+        tmux send-keys -t$session_name:0 \
+            "cd ~/${parent_from_home}/$(basename "$session")" Enter
         tmux new-window -t$session_name
-        tmux send-keys -t$session_name:1 "cd $session" Enter
+        tmux send-keys -t$session_name:1 \
+            "cd ~/${parent_from_home}/$(basename "$session")" Enter
         tmux send-keys -t$session_name:1 "nvim" Enter
         tmux new-window -t$session_name
         tmux send-keys -t$session_name:2 "w3m duckduckgo.com" Enter

@@ -12,7 +12,8 @@ Kindle_Ip_Adder=$(ip neigh | grep $Kindle_Mac_Addr | cut -d" " -f1)
 # TODO: paths shouldn't end with /
 Kindle_Home_Dir="/mnt/us/documents/"
 Kindle_Scrn_Dir="/mnt/us/Koreader/screenshots"
-Local_Scrn_Dir="$HOME/storage/shared/kindle"
+Local_Kindle_Dir="$HOME/storage/shared/kindle"
+Local_Home_Dir="${Local_Kindle_Dir}/home"
 Source=""
 Target=""
 
@@ -139,24 +140,8 @@ kindle_pull() {
 
 kindle_sync() {
 
-	if ! check_kindle ; then
-		no_kindle
-	fi
+    kindle_push "${Local_Home_Dir}/" "."
 
-	[[ $(($#-1)) -eq  2 ]] || usage
-	Source=${!2}
-	if [[ ${!#} =~ ^/ ]]; then
-		Target=${!#}
-	else
-		Target="$Kindle_Home_Dir${!#}"
-	fi
-	[[ $Source =~ /$ ]] || Source+="/"
-	[[ $Target =~ /$ ]] || Target+="/"
-	if ! ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder "([ -d $Target ])" ;then
-		no_dir
-	fi
-	rsync -rvuP -e "ssh -o StrictHostKeyChecking=no" ${Source}* root@$Kindle_Ip_Adder:$Target
-	rsync -rvuP -e "ssh -o StrictHostKeyChecking=no" root@$Kindle_Ip_Adder:${Target}* $Source
 }
 
 kindle_sync_screenshot() {
@@ -167,9 +152,9 @@ kindle_sync_screenshot() {
 
     local files_to_scan
 
-	set_pull_points "$Kindle_Scrn_Dir" "$Local_Scrn_Dir"
+	set_pull_points "$Kindle_Scrn_Dir" "$Local_Kindle_Dir"
 
-    files_to_scan="$(eval "rsync -ruP --dry-run -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\"" | sed 1d | sed "s@^@${Local_Scrn_Dir}/@")"
+    files_to_scan="$(eval "rsync -ruP --dry-run -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\"" | sed 1d | sed "s@^@${Local_Kindle_Dir}/@")"
 
     eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
 

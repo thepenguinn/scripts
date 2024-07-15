@@ -31,7 +31,13 @@ no_kindle() {
 		# ip neigh could return kindle ip address even after kindle got disconnected after
 		# once connecting, until resarting hotspot. Hence, Kindle_Ip_Adder could contain
 		# an invalid ip address, so dry running ssh with a 2 second timeout
-		timeout 2 ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder echo > /dev/null 2>&1 && printf "Ladies and Gentlemen, we got him...\n" && sleep 1 && return 0
+        if timeout 2 ssh -o StrictHostKeyChecking=no
+            root@$Kindle_Ip_Adder echo > /dev/null 2>&1; then
+
+            printf "Ladies and Gentlemen, we got him...\n"
+            sleep 1
+            return 0
+        fi
 		# if timeout spend 2 seconds, we are not sleeping
 		# just to keep the wait close to 16 seconds...
 		[[ $? != 124 ]] && sleep 2
@@ -47,8 +53,11 @@ check_kindle () {
 	# for kindle.
 	ssh-add -l | grep "root@localhost" > /dev/null 2>&1 || ssh-add
 	# checking whether ssh could connect to kindle otherwise calling no_kindle
-	if timeout 2 ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder echo > /dev/null 2>&1 ; then
+	if timeout 2 ssh -o StrictHostKeyChecking=no \
+        root@$Kindle_Ip_Adder echo > /dev/null 2>&1 ; then
+
 		return 0
+
 	fi
 	return 1
 }
@@ -81,10 +90,20 @@ usage() {
 }
 
 no_dir() {
+
+    local mk_dir
+
 	printf "Directory doesn't exist: \"$Target\"\n"
 	printf "Do you want to create it[y/n]?: "
+
 	read -r mk_dir
-	[[ $mk_dir =~ ^[Yy] ]] && eval "ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder \"(mkdir -p \\\"$Target\\\")\"" || exit 1
+
+    if [[ $mk_dir =~ ^[Yy] ]]; then
+        eval "ssh -o StrictHostKeyChecking=no \
+            root@$Kindle_Ip_Adder \"(mkdir -p \\\"$Target\\\")\""
+    else
+        exit 1
+    fi
 }
 
 set_push_points() {
@@ -122,10 +141,15 @@ kindle_push() {
 
 	set_push_points "$@"
 
-	if ! ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder "([ -d $Target ])" ;then
+	if ! ssh -o StrictHostKeyChecking=no \
+        root@$Kindle_Ip_Adder "([ -d $Target ])" ;then
+
 		no_dir
 	fi
-	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" "$Source" root@$Kindle_Ip_Adder:\"$Target\""
+
+	eval "rsync -rvuP -e \
+        \"ssh -o StrictHostKeyChecking=no\" \
+        "$Source" root@$Kindle_Ip_Adder:\"$Target\""
 
 }
 
@@ -137,7 +161,9 @@ kindle_pull() {
 
 	set_pull_points "$@"
 
-	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
+	eval "rsync -rvuP -e \
+        \"ssh -o StrictHostKeyChecking=no\" \
+        root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
 
 }
 assert_local_kindle_dir() {
@@ -163,9 +189,14 @@ kindle_sync_screenshot() {
 
     set_pull_points "$Kindle_Scrn_Dir" "$Local_Kindle_Dir"
 
-    files_to_scan="$(eval "rsync -ruP --dry-run -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\"" | sed 1d | sed "s@^@${Local_Kindle_Dir}/@")"
+    files_to_scan="$(eval "rsync -ruP --dry-run \
+        -e \"ssh -o StrictHostKeyChecking=no\" \
+        root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\"" \
+        | sed 1d | sed "s@^@${Local_Kindle_Dir}/@")"
 
-    eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
+    eval "rsync -rvuP \
+        -e \"ssh -o StrictHostKeyChecking=no\" \
+        root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
 
     if [[ ! -z "$files_to_scan" ]]; then
         termux-media-scan "$files_to_scan"
@@ -189,7 +220,9 @@ kindle_sync() {
     # if we want to sync the reading progress, we need to
     # sync these files
 
-	eval "rsync -rvuP --exclude "*.sdr" -e \"ssh -o StrictHostKeyChecking=no\" "$Source" root@$Kindle_Ip_Adder:\"$Target\""
+	eval "rsync -rvuP --exclude "*.sdr" \
+        -e \"ssh -o StrictHostKeyChecking=no\" \
+        "$Source" root@$Kindle_Ip_Adder:\"$Target\""
 
 }
 
@@ -211,19 +244,27 @@ kindle_hall() {
 
 	case $1 in
 		1|0)
-			eval "ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder \"echo $1 > /sys/devices/soc0/rex_hall/hall_enable\""
-			[[ $1 == 1 ]] && printf "Hall Sensor: Enabled\n" || printf "Hall Sensor: Disabled\n"
-			;;
-		stat|status)
-			case $(ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder cat /sys/devices/soc0/rex_hall/hall_enable) in
-				1)
-					printf "Hall Sensor: Enabled\n"
-					;;
-				0)
-					printf "Hall Sensor: Disabled\n"
-					;;
-			esac
-			;;
+			eval "ssh -o StrictHostKeyChecking=no \
+                root@$Kindle_Ip_Adder \"echo $1 > /sys/devices/soc0/rex_hall/hall_enable\""
+
+            if [[ $1 == 1 ]]; then
+                printf "Hall Sensor: Enabled\n"
+            else
+                printf "Hall Sensor: Disabled\n"
+            fi
+
+            ;;
+        stat|status)
+            case $(ssh -o StrictHostKeyChecking=no \
+                root@$Kindle_Ip_Adder cat /sys/devices/soc0/rex_hall/hall_enable) in
+                1)
+                    printf "Hall Sensor: Enabled\n"
+                    ;;
+                0)
+                    printf "Hall Sensor: Disabled\n"
+                    ;;
+            esac
+            ;;
 
 		*)
 			usage

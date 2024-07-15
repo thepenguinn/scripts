@@ -12,8 +12,10 @@ Kindle_Ip_Adder=$(ip neigh | grep $Kindle_Mac_Addr | cut -d" " -f1)
 # TODO: paths shouldn't end with /
 Kindle_Home_Dir="/mnt/us/documents/"
 Kindle_Scrn_Dir="/mnt/us/Koreader/screenshots"
+
 Local_Kindle_Dir="$HOME/storage/shared/kindle"
 Local_Home_Dir="${Local_Kindle_Dir}/home"
+
 Source=""
 Target=""
 
@@ -140,7 +142,17 @@ kindle_pull() {
 
 kindle_sync() {
 
-    kindle_push "${Local_Home_Dir}/" "."
+	if ! check_kindle ; then
+		no_kindle
+	fi
+
+	set_push_points "${Local_Home_Dir}/" "."
+
+    # TODO: for now we won't be syncing *.sdr directories
+    # if we want to sync the reading progress, we need to
+    # sync these files
+
+	eval "rsync -rvuP --exclude "*.sdr" -e \"ssh -o StrictHostKeyChecking=no\" "$Source" root@$Kindle_Ip_Adder:\"$Target\""
 
 }
 

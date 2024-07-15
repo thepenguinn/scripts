@@ -13,7 +13,8 @@ Kindle_Ip_Adder=$(ip neigh | grep $Kindle_Mac_Addr | cut -d" " -f1)
 Kindle_Home_Dir="/mnt/us/documents/"
 Kindle_Scrn_Dir="/mnt/us/Koreader/screenshots"
 
-Local_Kindle_Dir="$HOME/storage/shared/kindle"
+# the user need to export these env vars
+Local_Kindle_Dir="$LOCAL_KINDLE_DIR"
 Local_Home_Dir="${Local_Kindle_Dir}/home"
 
 Source=""
@@ -139,10 +140,43 @@ kindle_pull() {
 	eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
 
 }
+assert_local_kindle_dir() {
+
+    if [[ $LOCAL_KINDLE_DIR == "" ]]; then
+        printf "Its seems like LOCAL_KINDLE_DIR has not been exported.\n"
+        printf "Export it in your shell rc.\n"
+        printf "Exiting...\n"
+        exit 1
+    fi
+
+}
+
+kindle_sync_screenshot() {
+
+    if ! check_kindle ; then
+        no_kindle
+    fi
+
+    assert_local_kindle_dir
+
+    local files_to_scan
+
+    set_pull_points "$Kindle_Scrn_Dir" "$Local_Kindle_Dir"
+
+    files_to_scan="$(eval "rsync -ruP --dry-run -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\"" | sed 1d | sed "s@^@${Local_Kindle_Dir}/@")"
+
+    eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
+
+    if [[ ! -z "$files_to_scan" ]]; then
+        termux-media-scan "$files_to_scan"
+    fi
+
+}
 
 kindle_sync() {
 
-    # we don't need to check_kindle, because kindle_sync_screenshot already does it
+    # we don't need to check_kindle and assert_local_kindle_dir,
+    # because kindle_sync_screenshot already does it and
     kindle_sync_screenshot
 
     # cleaning Source and Target set by kindle_sync_screenshot
@@ -156,26 +190,6 @@ kindle_sync() {
     # sync these files
 
 	eval "rsync -rvuP --exclude "*.sdr" -e \"ssh -o StrictHostKeyChecking=no\" "$Source" root@$Kindle_Ip_Adder:\"$Target\""
-
-}
-
-kindle_sync_screenshot() {
-
-	if ! check_kindle ; then
-		no_kindle
-	fi
-
-    local files_to_scan
-
-	set_pull_points "$Kindle_Scrn_Dir" "$Local_Kindle_Dir"
-
-    files_to_scan="$(eval "rsync -ruP --dry-run -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\"" | sed 1d | sed "s@^@${Local_Kindle_Dir}/@")"
-
-    eval "rsync -rvuP -e \"ssh -o StrictHostKeyChecking=no\" root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
-
-    if [[ ! -z "$files_to_scan" ]]; then
-        termux-media-scan "$files_to_scan"
-    fi
 
 }
 

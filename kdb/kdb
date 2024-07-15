@@ -233,7 +233,7 @@ kindle_shell() {
 	fi
 
 	if [[ ${#} == 0 ]]; then
-		ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder
+		ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder -t /mnt/us/bin/bin/zsh
 	else
 		ssh -o StrictHostKeyChecking=no root@$Kindle_Ip_Adder "$@"
 	fi

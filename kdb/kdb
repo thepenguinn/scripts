@@ -142,9 +142,12 @@ kindle_pull() {
 
 kindle_sync() {
 
-	if ! check_kindle ; then
-		no_kindle
-	fi
+    # we don't need to check_kindle, because kindle_sync_screenshot already does it
+    kindle_sync_screenshot
+
+    # cleaning Source and Target set by kindle_sync_screenshot
+    Source=""
+    Target=""
 
 	set_push_points "${Local_Home_Dir}/" "."
 

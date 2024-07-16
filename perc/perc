@@ -1,0 +1,88 @@
+#!/bin/bash
+
+declare -a Urls
+declare -a Optional_Args
+
+Local_Home_Dir="$LOCAL_KINDLE_DIR/home"
+Output_Dir=""
+
+
+if [[ $LOCAL_KINDLE_DIR == "" ]]; then
+    printf "Its seems like LOCAL_KINDLE_DIR has not been exported.\n"
+    printf "Export it in your shell rc.\n"
+    printf "Exiting...\n"
+    exit 1
+fi
+
+no_dir() {
+
+    local mk_dir
+
+	printf "Directory doesn't exist: \"$Local_Home_Dir/$Output_Dir\"\n"
+	printf "Do you want to create it[y/n]?: "
+
+	read -r mk_dir
+
+    if [[ $mk_dir =~ ^[Yy] ]]; then
+        mkdir "$Local_Home_Dir/$Output_Dir"
+    else
+        exit 1
+    fi
+}
+
+# First Arg -> string: string to convert to a title
+create_title () {
+
+    # TODO: maybe convert all the sed into a single sed
+    # from https://prowritingaid.com/list-of-words-not-capitalized-in-titles
+    sed "s/[-_]/ /g;s/\([a-zA-Z0-9]*\)/\u\1/g;s/^ *//g" <<<"${1}" \
+        | sed "s/ A / a /g;s/ A$/ a/g" \
+        | sed "s/ And / and /g;s/ And$/ and/g" \
+        | sed "s/ As / as /g;s/ As$/ as/g" \
+        | sed "s/ At / at /g;s/ At$/ at/g" \
+        | sed "s/ But / but /g;s/ But$/ but/g" \
+        | sed "s/ By / by /g;s/ By$/ by/g" \
+        | sed "s/ Down / down /g;s/ Down$/ down/g" \
+        | sed "s/ For / for /g;s/ For$/ for/g" \
+        | sed "s/ From / from /g;s/ From$/ from/g" \
+        | sed "s/ If / if /g;s/ If$/ if/g" \
+        | sed "s/ In / in /g;s/ In$/ in/g" \
+        | sed "s/ Into / into /g;s/ Into$/ into/g" \
+        | sed "s/ Like / like /g;s/ Like$/ like/g" \
+        | sed "s/ Near / near /g;s/ Near$/ near/g" \
+        | sed "s/ Nor / nor /g;s/ Nor$/ nor/g" \
+        | sed "s/ Of / of /g;s/ Of$/ of/g" \
+        | sed "s/ Off / off /g;s/ Off$/ off/g" \
+        | sed "s/ On / on /g;s/ On$/ on/g" \
+        | sed "s/ Once / once /g;s/ Once$/ once/g" \
+        | sed "s/ Onto / onto /g;s/ Onto$/ onto/g" \
+        | sed "s/ Or / or /g;s/ Or$/ or/g" \
+        | sed "s/ Over / over /g;s/ Over$/ over/g" \
+        | sed "s/ Past / past /g;s/ Past$/ past/g" \
+        | sed "s/ So / so /g;s/ So$/ so/g" \
+        | sed "s/ Than / than /g;s/ Than$/ than/g" \
+        | sed "s/ That / that /g;s/ That$/ that/g" \
+        | sed "s/ To / to /g;s/ To$/ to/g" \
+        | sed "s/ Upon / upon /g;s/ Upon$/ upon/g" \
+        | sed "s/ When / when /g;s/ When$/ when/g" \
+        | sed "s/ With / with /g;s/ With$/ with/g" \
+        | sed "s/ Yet / yet /g;s/ Yet$/ yet/g" \
+
+}
+
+# ssh arch percollate epub --toc-level=6 --no-cover --title=\"Something Stupid\" --style ~/.config/genpub/style.css -o projects/scripts/genpub/output/fly.epub https://en.m.wikipedia.org/wiki/Butterfly https://en.m.wikipedia.org/wiki/Monsoon
+
+# ssh arch percollate epub --toc-level=6 --no-cover --individual --style ~/.config/genpub/style.css -o projects/scripts/genpub/output/out https://en.m.wikipedia.org/wiki/Butterfly https://en.m.wikipedia.org/wiki/Monsoon
+
+# -c : get the url from clipboard
+# -s : build into a single epub -> need to give the file name
+# many
+
+# for arg in "$@"
+# do
+#     if [[ $arg == "-i" ]]; then
+#         Optional_Args+=( --inde )
+#     elif [[ $arg =~ (http|https)://* ]]; then
+#         Urls+=( $arg )
+#     fi
+# done

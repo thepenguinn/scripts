@@ -46,10 +46,11 @@ create_title () {
 
     local title="${1%%*/}"
 
+    # | tr "[:upper:]" "[:lower:]" \
+    #
     # TODO: maybe convert all the sed into a single sed
     # from https://prowritingaid.com/list-of-words-not-capitalized-in-titles
     sed "s/[-_]/ /g;s/\([a-zA-Z0-9]*\)/\u\1/g;s/^ *//g" <<<"${title}" \
-        # | tr "[:upper:]" "[:lower:]" \
         | sed "s/.epub$//g" \
         | sed "s/ A / a /g;s/ A$/ a/g" \
         | sed "s/ And / and /g;s/ And$/ and/g" \

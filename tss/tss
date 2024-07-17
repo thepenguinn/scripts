@@ -78,9 +78,9 @@ parent_from_home=${parent_from_home%/*}
 suffix_hash=$(tr "/" "." <<<"$parent_from_home")
 
 if [[ ! -z "${session_suffix_table[${suffix_hash}]}" ]]; then
-    session_name="${session_suffix_table[${suffix_hash}]}-${session_name}"
+    session_name="${session_name}-${session_suffix_table[${suffix_hash}]}"
 else
-    session_name="$(tr "." "_" <<<"$suffix_hash")-${session_name}"
+    session_name="${session_name}-$(tr "." "_" <<<"$suffix_hash")"
 fi
 
 create_session () {

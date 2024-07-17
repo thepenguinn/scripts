@@ -14,6 +14,27 @@ if [[ $LOCAL_KINDLE_DIR == "" ]]; then
     exit 1
 fi
 
+# Does not take any args.
+usage () {
+    printf "perc [options] [urls] [path to output]\n\n"
+
+    printf "[options]:\n"
+    printf " -c:\n"
+    printf "  Reads the url from the clipboard.\n"
+    printf " -s:\n"
+    printf "  Bundles the urls into a single epub (not implemented yet).\n\n"
+
+    printf "[path to output]:\n"
+    printf " ./<path>:\n"
+    printf "  Specifies the path relative to the current working directory.\n"
+    printf " <path>:\n"
+    printf "  Specifies the relative path from the \$LOCAL_KINDLE_DIR/home\n"
+    printf " /<path>:\n"
+    printf "  Specifies the absolute path.\n"
+
+    # printf "<++>"
+}
+
 # First Arg -> string: rel or abs dir path
 set_dir () {
 
@@ -108,9 +129,17 @@ run_percollate () {
 # -s : build into a single epub -> need to give the file name
 # many
 
+if [[ $# = 0 ]]; then
+    usage
+    exit 1
+fi
+
 for arg in "$@"
 do
-    if [[ "$arg" == "-c" ]]; then
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+        usage
+        exit 1
+    elif [[ "$arg" == "-c" ]]; then
         tmp_url="$(termux-clipboard-get)"
         if [[ "$tmp_url" =~ (http|https)://* ]]; then
             Urls+=( "\"$tmp_url\"" )

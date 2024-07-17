@@ -4,8 +4,9 @@ declare -a Urls
 declare -a Optional_Args
 
 Local_Home_Dir="$LOCAL_KINDLE_DIR/home"
-Output_Dir=""
 
+Individual="--individual"
+Output_Dir=""
 
 if [[ $LOCAL_KINDLE_DIR == "" ]]; then
     printf "Its seems like LOCAL_KINDLE_DIR has not been exported.\n"
@@ -14,17 +15,27 @@ if [[ $LOCAL_KINDLE_DIR == "" ]]; then
     exit 1
 fi
 
-no_dir() {
+# First Arg -> string: rel or abs dir path
+no_dir () {
 
     local mk_dir
+    local dir_to_mk
 
-	printf "Directory doesn't exist: \"$Local_Home_Dir/$Output_Dir\"\n"
+    if [[ "${1}" =~ ^/.* ]]; then
+        dir_to_mk="${1}"
+    elif [[ "${1}" =~ ^\./.* ]]; then
+        dir_to_mk="${1}"
+    else
+        dir_to_mk="$Local_Home_Dir/${1}"
+    fi
+
+	printf "Directory doesn't exist: \"${dir_to_mk}\"\n"
 	printf "Do you want to create it[y/n]?: "
 
 	read -r mk_dir
 
-    if [[ $mk_dir =~ ^[Yy] ]]; then
-        mkdir "$Local_Home_Dir/$Output_Dir"
+    if [[ "$mk_dir" =~ ^[Yy] ]]; then
+        mkdir "${dir_to_mk}"
     else
         exit 1
     fi
@@ -33,9 +44,13 @@ no_dir() {
 # First Arg -> string: string to convert to a title
 create_title () {
 
+    local title="${1%%*/}"
+
     # TODO: maybe convert all the sed into a single sed
     # from https://prowritingaid.com/list-of-words-not-capitalized-in-titles
-    sed "s/[-_]/ /g;s/\([a-zA-Z0-9]*\)/\u\1/g;s/^ *//g" <<<"${1}" \
+    sed "s/[-_]/ /g;s/\([a-zA-Z0-9]*\)/\u\1/g;s/^ *//g" <<<"${title}" \
+        # | tr "[:upper:]" "[:lower:]" \
+        | sed "s/.epub$//g" \
         | sed "s/ A / a /g;s/ A$/ a/g" \
         | sed "s/ And / and /g;s/ And$/ and/g" \
         | sed "s/ As / as /g;s/ As$/ as/g" \
@@ -78,11 +93,22 @@ create_title () {
 # -s : build into a single epub -> need to give the file name
 # many
 
-# for arg in "$@"
-# do
-#     if [[ $arg == "-i" ]]; then
-#         Optional_Args+=( --inde )
-#     elif [[ $arg =~ (http|https)://* ]]; then
-#         Urls+=( $arg )
-#     fi
-# done
+for arg in "$@"
+do
+    if [[ "$arg" == "-c" ]]; then
+        tmp_url="$(termux-clipboard-get)"
+        if [[ "$tmp_url" =~ (http|https)://* ]]; then
+            Urls+=( "$arg" )
+        else
+            echo "Clipboard does not have a valid url."
+        fi
+    elif [[ "$arg" == "-s" ]]; then
+        Individual=""
+    elif [[ "$arg" =~ (http|https)://* ]]; then
+        Urls+=( "$arg" )
+    elif [[ "$arg" =~ ^/.* ]]; then
+        echo "abs path"
+    else
+        echo "rel path"
+    fi
+done

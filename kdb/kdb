@@ -166,6 +166,7 @@ kindle_pull() {
         root@$Kindle_Ip_Adder$(sed s@^\ @@ <<<"$Source") \"$Target\""
 
 }
+
 assert_local_kindle_dir() {
 
     if [[ $LOCAL_KINDLE_DIR == "" ]]; then

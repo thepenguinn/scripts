@@ -115,7 +115,7 @@ create_title () {
 run_percollate () {
 
     ssh arch percollate epub \
-        --toc-level=6 --no-cover "${Individual}" --style ~/.config/genpub/style.css \
+        --toc-level=6 --no-cover "${Individual}" --style ~/.config/perc/style.css \
         --output "${Output_Dir}/perc" \
         "${Urls[@]}"
 

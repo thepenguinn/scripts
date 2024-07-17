@@ -1,12 +1,11 @@
 #!/bin/bash
 
 declare -a Urls
-declare -a Optional_Args
 
 Local_Home_Dir="$LOCAL_KINDLE_DIR/home"
 
 Individual="--individual"
-Output_Dir=""
+Output_Dir="${Local_Home_Dir}"
 
 if [[ $LOCAL_KINDLE_DIR == "" ]]; then
     printf "Its seems like LOCAL_KINDLE_DIR has not been exported.\n"
@@ -16,7 +15,7 @@ if [[ $LOCAL_KINDLE_DIR == "" ]]; then
 fi
 
 # First Arg -> string: rel or abs dir path
-no_dir () {
+set_dir () {
 
     local mk_dir
     local dir_to_mk
@@ -29,16 +28,22 @@ no_dir () {
         dir_to_mk="$Local_Home_Dir/${1}"
     fi
 
-	printf "Directory doesn't exist: \"${dir_to_mk}\"\n"
-	printf "Do you want to create it[y/n]?: "
+    if [[ ! -d "$dir_to_mk" ]]; then
+        printf "Directory doesn't exist: \"${dir_to_mk}\"\n"
+        printf "Do you want to create it[y/n]?: "
 
-	read -r mk_dir
+        read -r mk_dir
 
-    if [[ "$mk_dir" =~ ^[Yy] ]]; then
-        mkdir "${dir_to_mk}"
-    else
-        exit 1
+        if [[ "$mk_dir" =~ ^[Yy] ]]; then
+            mkdir "${dir_to_mk}"
+        else
+            exit 1
+        fi
     fi
+
+    # echo "$dir_to_mk"
+    Output_Dir="$(readlink -e "$dir_to_mk")"
+
 }
 
 # First Arg -> string: string to convert to a title
@@ -86,6 +91,15 @@ create_title () {
 
 }
 
+run_percollate () {
+
+    ssh arch percollate epub \
+        --toc-level=6 --no-cover "${Individual}" --style ~/.config/genpub/style.css \
+        --output "${Output_Dir}/perc" \
+        "${Urls[@]}"
+
+}
+
 # ssh arch percollate epub --toc-level=6 --no-cover --title=\"Something Stupid\" --style ~/.config/genpub/style.css -o projects/scripts/genpub/output/fly.epub https://en.m.wikipedia.org/wiki/Butterfly https://en.m.wikipedia.org/wiki/Monsoon
 
 # ssh arch percollate epub --toc-level=6 --no-cover --individual --style ~/.config/genpub/style.css -o projects/scripts/genpub/output/out https://en.m.wikipedia.org/wiki/Butterfly https://en.m.wikipedia.org/wiki/Monsoon
@@ -99,17 +113,27 @@ do
     if [[ "$arg" == "-c" ]]; then
         tmp_url="$(termux-clipboard-get)"
         if [[ "$tmp_url" =~ (http|https)://* ]]; then
-            Urls+=( "$arg" )
+            Urls+=( "\"$tmp_url\"" )
         else
             echo "Clipboard does not have a valid url."
         fi
     elif [[ "$arg" == "-s" ]]; then
-        Individual=""
+        # TODO: currently we can only percollate the individual sites
+        echo "Currently we can only percollate the individual sites"
+        # Individual=""
     elif [[ "$arg" =~ (http|https)://* ]]; then
-        Urls+=( "$arg" )
-    elif [[ "$arg" =~ ^/.* ]]; then
-        echo "abs path"
+        Urls+=( "\"$arg\"" )
     else
-        echo "rel path"
+        set_dir $arg
+        # for some reason this is not working
+        # Output_Dir="$(set_dir "$arg")"
     fi
+
 done
+
+if [[ "${#Urls[@]}" == 0 ]]; then
+    echo "Got no valid urls, exiting..."
+    exit 1
+else
+    run_percollate
+fi

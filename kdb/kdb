@@ -31,7 +31,7 @@ no_kindle() {
 		# ip neigh could return kindle ip address even after kindle got disconnected after
 		# once connecting, until resarting hotspot. Hence, Kindle_Ip_Adder could contain
 		# an invalid ip address, so dry running ssh with a 2 second timeout
-        if timeout 2 ssh -o StrictHostKeyChecking=no
+        if timeout 2 ssh -o StrictHostKeyChecking=no \
             root@$Kindle_Ip_Adder echo > /dev/null 2>&1; then
 
             printf "Ladies and Gentlemen, we got him...\n"

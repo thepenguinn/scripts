@@ -233,9 +233,9 @@ gen_cover_img () {
 
 	if ! check_pre_comp_cover "$dir/ebook/cover_${3}" "$title"; then
 
-		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
-		convert -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
-		convert -size 800x1080 xc:white "$tmpdir/back.png"
+		magick -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity north caption:"$title" "$tmpdir/title.png"
+		magick -background none -fill black -font "$font" -pointsize 65 -size 600x810 -gravity south caption:"$2" "$tmpdir/subtitle.png"
+		magick -size 800x1080 xc:white "$tmpdir/back.png"
 		composite -gravity center "$tmpdir/title.png" "$tmpdir/back.png" "$tmpdir/first.png"
 		composite -gravity center "$tmpdir/subtitle.png" "$tmpdir/first.png" "$dir/ebook/cover_${3}.png"
 
@@ -270,7 +270,7 @@ gen_notes_epub () {
 	gen_cover_img "$1" "Notes" "$name"
 	cover_img="${1%/*}/ebook/cover_$name.png"
 
-	pandoc --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
+	pandoc --css ~/.config/perc/style.css --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
 
 	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
 	lmodt_epub=$(stat --printf "%Y\n" "$dir/${name}.epub")
@@ -286,6 +286,7 @@ notes_ebook () {
 
 	while read -r dir
 	do
+
 		[[ -z "$dir" ]] && continue
 
 		if [[ -f "$dir" ]]; then
@@ -297,6 +298,9 @@ notes_ebook () {
 
 		while read -r file
 		do
+
+            [[ "$file" == "" ]] && continue
+
 			check_metadata "$file"
 
 			if ! check_pre_comp_notes_markdown "$file" ; then
@@ -337,10 +341,11 @@ gen_syllabus_epub () {
 
 	while read -r file
 	do
+        [[ "$file" == "" ]] && continue
 		sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
 	done <<<"$md_files"
 
-	pandoc --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
+	pandoc --css ~/.config/perc/style.css --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
 
 	lmodt_epub_file="$1/ebook/lmodt_${epub_name}_syllabus_epub"
 	lmodt_epub=$(stat --printf "%Y\n" "$1/${epub_name}_syllabus.epub")

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-work_dirs="$HOME/projects:$HOME/projects/scripts:$HOME/stupid:$HOME/projects/dotfiles"
+work_dirs="$HOME/projects:$HOME/projects/scripts:$HOME/stupid:$HOME/projects/dotfiles:$HOME/notes"
 
 declare -A session_suffix_table
 
@@ -53,7 +53,7 @@ if [[ $1 == "arch" ]]; then
 fi
 
 session=$(tr ":" "\n" <<<"$work_dirs" \
-    | xargs -I {} find {} -maxdepth 1 -type d \
+    | xargs -I {} find -L {} -maxdepth 1 -type d \
     | sed "1d" \
     | fzf)
 

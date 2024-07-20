@@ -270,7 +270,7 @@ gen_notes_epub () {
 	gen_cover_img "$1" "Notes" "$name"
 	cover_img="${1%/*}/ebook/cover_$name.png"
 
-	pandoc --css ~/.config/perc/style.css --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
+	pandoc --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
 
 	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
 	lmodt_epub=$(stat --printf "%Y\n" "$dir/${name}.epub")
@@ -345,7 +345,7 @@ gen_syllabus_epub () {
 		sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
 	done <<<"$md_files"
 
-	pandoc --css ~/.config/perc/style.css --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
+	pandoc --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
 
 	lmodt_epub_file="$1/ebook/lmodt_${epub_name}_syllabus_epub"
 	lmodt_epub=$(stat --printf "%Y\n" "$1/${epub_name}_syllabus.epub")

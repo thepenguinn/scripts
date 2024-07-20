@@ -307,7 +307,27 @@ gen_markdown () {
 
 	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q!" "$1/../index.norg" > /dev/null
 
-	[[ -d "$1/ebook" ]] || exit 1
+    [[ -d "$1/ebook" ]] || exit 1
+
+    # This simply prepends a `!` to the link, if it has any of the
+    # (svg|png|jpg) extentions.
+    #
+    # Because neorg doesn't add one, for some reason, maybe i'm doing
+    # something wrong...
+    # ``` norg
+    # {pics/some.png}[Caption]
+    # ```
+    #
+    # This will be converted into
+    # ``` markdown
+    # [Caption](pics/some.png)
+    # ```
+    # `!` is missing
+    #
+    # sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
+
+    find "$1/ebook" -maxdepth 1 -name "*.md" \
+        | xargs sed -i "s@^\([ \t]*\[.*\]\)[ \t]*\((.*\.\(svg\|png\|jpg\))\)@\!\1\2@"
 
 	update_lmodt "$1"
 }
@@ -402,26 +422,8 @@ gen_syllabus_epub () {
     while read -r file
     do
         [[ "$file" == "" ]] && continue
-        # This simply prepends a `!` to the link, if it has any of the
-        # (svg|png|jpg) extentions.
-        #
-        # Because neorg doesn't add one, for some reason, maybe i'm doing
-        # something wrong...
-        # ``` norg
-        # {pics/some.png}[Caption]
-        # ```
-        #
-        # This will be converted into
-        # ``` markdown
-        # [Caption](pics/some.png)
-        # ```
-        # `!` is missing
-        #
-        # sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
-        #
-        sed "1,/---/d" "$file" \
-            | sed "s@^\([ \t]*\[.*\]\)[ \t]*\((.*\.\(svg\|png\|jpg\))\)@\!\1\2@" \
-            >> "$1/ebook/ebook.md"
+
+        sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
 
 	done <<<"$md_files"
 

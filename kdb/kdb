@@ -205,7 +205,7 @@ kindle_sync_screenshot() {
 
 }
 
-kindle_sync() {
+kindle_sync_all() {
 
     # we don't need to check_kindle and assert_local_kindle_dir,
     # because kindle_sync_screenshot already does it and
@@ -225,6 +225,25 @@ kindle_sync() {
         -e \"ssh -o StrictHostKeyChecking=no\" \
         "$Source" root@$Kindle_Ip_Adder:\"$Target\""
 
+}
+
+kindle_sync_home() {
+
+    if ! check_kindle ; then
+        no_kindle
+    fi
+
+    assert_local_kindle_dir
+
+	set_push_points "${Local_Home_Dir}/" "."
+
+    # TODO: for now we won't be syncing *.sdr directories
+    # if we want to sync the reading progress, we need to
+    # sync these files
+
+	eval "rsync -rvuP --exclude "*.sdr" \
+        -e \"ssh -o StrictHostKeyChecking=no\" \
+        "$Source" root@$Kindle_Ip_Adder:\"$Target\""
 }
 
 kindle_shell() {
@@ -295,7 +314,11 @@ case "$subcmd" in
         exit 0
         ;;
 	sync)
-		kindle_sync "$@"
+		kindle_sync_home "$@"
+		exit 0
+		;;
+	syncall)
+		kindle_sync_all "$@"
 		exit 0
 		;;
 	hall)

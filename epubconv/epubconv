@@ -325,6 +325,11 @@ gen_notes_epub () {
 	gen_cover_img "$1" "Notes" "$name"
 	cover_img="${1%/*}/ebook/cover_$name.png"
 
+    # cd ing to the directory, where the norg files are because
+    # pandoc will look for images relative to the cwd. So it is
+    # necessary to be in this directory, before we invoke pandoc
+    cd "${dir}"
+
 	pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
 
 	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
@@ -419,6 +424,11 @@ gen_syllabus_epub () {
             >> "$1/ebook/ebook.md"
 
 	done <<<"$md_files"
+
+    # cd ing to the directory, where the norg files are because
+    # pandoc will look for images relative to the cwd. So it is
+    # necessary to be in this directory, before we invoke pandoc
+    cd "${1}"
 
 	pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
 

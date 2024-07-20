@@ -394,10 +394,30 @@ gen_syllabus_epub () {
 	md_files=$(find "$1/ebook" -iname syllabus*.md | sort)
 	sed -n "1,/---/p" "$1/ebook/index.md" > "$1/ebook/ebook.md"
 
-	while read -r file
-	do
+    while read -r file
+    do
         [[ "$file" == "" ]] && continue
-		sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
+        # This simply prepends a `!` to the link, if it has any of the
+        # (svg|png|jpg) extentions.
+        #
+        # Because neorg doesn't add one, for some reason, maybe i'm doing
+        # something wrong...
+        # ``` norg
+        # {pics/some.png}[Caption]
+        # ```
+        #
+        # This will be converted into
+        # ``` markdown
+        # [Caption](pics/some.png)
+        # ```
+        # `!` is missing
+        #
+        # sed "1,/---/d" "$file" >> "$1/ebook/ebook.md"
+        #
+        sed "1,/---/d" "$file" \
+            | sed "s@^\([ \t]*\[.*\]\)[ \t]*\((.*\.\(svg\|png\|jpg\))\)@\!\1\2@" \
+            >> "$1/ebook/ebook.md"
+
 	done <<<"$md_files"
 
 	pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"

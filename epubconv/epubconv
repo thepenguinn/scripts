@@ -8,6 +8,7 @@ unset modified_time_norg
 
 declare -A kindle_push_files
 
+# TODO: currently we are not using this right now, maybe remove it
 kindle_push_all=0
 
 tmpdir="$TMPDIR/epubconv"
@@ -51,7 +52,51 @@ ask_for_push () {
 
 }
 
+ask_for_sync () {
+
+    # Takes no args
+    # Returns true if the user confirmed to push
+
+	local push
+
+	printf "Kindle is online.\n"
+	printf "    y - Sync files.\n"
+	printf "    * - Just don't.\n\n"
+	printf "Do you want to sync with kindle ? : "
+	read -r push
+	printf "\n"
+
+	case $push in
+		y)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+
+}
+
+cp_verbose () {
+
+	# First Arg --> to directory
+	# ... Args --> files to copy
+
+	local from
+
+    printf "Copying...\n"
+	printf "FROM:\n"
+	for from in $(seq 2 ${#})
+	do
+		printf "    \"${!from}\"\n"
+	done
+	printf "TO:\n"
+	printf "    \"${1}\"\n\n"
+}
+
 push_kindle () {
+
+    # will push to the local kindle home directory if it's set
 
 	local dir
 	local kdir
@@ -60,9 +105,13 @@ push_kindle () {
 	local index
 	declare -n elem
 
-	if ! kdb justcheck > /dev/null 2>&1 ; then
-		return 1
-	fi
+    if [[ -z $LOCAL_KINDLE_DIR ]]; then
+        printf "Its seems like LOCAL_KINDLE_DIR has not been exported.\n"
+        printf "Export it in your shell rc, inorder to push the build\n"
+        printf "epubs to that directory."
+        printf "Exiting...\n"
+        return 1
+    fi
 
 	for elem in "${!kindle_push_files[@]}"
 	do
@@ -90,13 +139,19 @@ push_kindle () {
 				break
 			fi
 
-		done
+        done
 
-		if [[ $kindle_push_all ==  1 ]] || ask_for_push "$kdir" "${elem[@]}"; then
-			kdb push "${elem[@]}" "$kdir"
-		fi
+        cp_verbose "${LOCAL_KINDLE_DIR}/home/$kdir" "${elem[@]}"
+        cp "${elem[@]}" "${LOCAL_KINDLE_DIR}/home/$kdir"
 
 	done
+
+    # TODO: um, just push it don't ask..., maybe add a flag to
+    # make this interactive
+    # if kdb justcheck > /dev/null 2>&1 && ask_for_sync ; then
+    if kdb justcheck > /dev/null 2>&1 ; then
+        kdb sync
+    fi
 
 }
 

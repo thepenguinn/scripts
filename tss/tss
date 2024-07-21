@@ -22,14 +22,25 @@ create_general_session () {
 }
 
 create_proot_session () {
-    if ! tmux has-session -t archlinux 2>/dev/null; then
-        tmux new-session -ds archlinux
-        tmux send-keys -t archlinux:0 "proot-distro login archlinux \
+
+    if ! tmux has-session -t utils:proot 2>/dev/null; then
+        # there is no proot window
+        if ! tmux has-session -t utils 2>/dev/null; then
+            # there are no utils session
+            # so create the session too
+            tmux new-session -d -s utils -n proot
+        else
+            # just need to create the proot window
+            tmux new-window -d -n proot
+        fi
+
+        tmux send-keys -t utils:proot "proot-distro login archlinux \
             --bind /data/data/com.termux/files/home:/home/daniel" Enter \
             "cd /home/daniel" Enter "/usr/sbin/sshd" Enter "su daniel" Enter \
-            "printf \"\033[4A\033[31;1m  Proot Instance: Don't use this instance directly,\n      instead ssh into this instance.\n\"" Enter
-
+            "printf \"\033[5A\033[31;1m  Proot Instance: Don't use this instance directly,\n      \
+            instead ssh into this instance.\n\"" Enter
     fi
+
 }
 
 if [[ $1 == "gen" ]]; then
@@ -48,7 +59,7 @@ if [[ $1 == "arch" ]]; then
     if [[ -z $TMUX ]]; then
         tmux attach
     fi
-    tmux switch-client -t archlinux:0
+    tmux switch-client -t utils:proot
     exit 0
 fi
 

@@ -43,6 +43,21 @@ create_proot_session () {
 
 }
 
+create_music_session () {
+
+    if ! tmux has-session -t utils:music 2>/dev/null; then
+        # there is no music window
+        if ! tmux has-session -t utils 2>/dev/null; then
+            # there are no utils session
+            # so create the session too
+            tmux new-session -d -s utils -n music
+        else
+            # just need to create the music window
+            tmux new-window -d -t utils -n music
+        fi
+    fi
+}
+
 if [[ $1 == "gen" ]]; then
     create_proot_session
     create_general_session
@@ -60,6 +75,15 @@ if [[ $1 == "arch" ]]; then
         tmux attach
     fi
     tmux switch-client -t utils:proot
+    exit 0
+fi
+
+if [[ $1 == "music" ]]; then
+    create_music_session
+    if [[ -z $TMUX ]]; then
+        tmux attach
+    fi
+    tmux switch-client -t utils:music
     exit 0
 fi
 

@@ -31,7 +31,7 @@ create_proot_session () {
             tmux new-session -d -s utils -n proot
         else
             # just need to create the proot window
-            tmux new-window -d -n proot
+            tmux new-window -d -t utils -n proot
         fi
 
         tmux send-keys -t utils:proot "proot-distro login archlinux \

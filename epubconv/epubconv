@@ -310,6 +310,7 @@ gen_markdown () {
 
 	local dir=$(sed "s; ;\\\ ;" <<<"$1")
 
+    printf "Generating markdown: \"$dir\"\n"
 	nvim -R -c ":Neorg export directory $dir markdown $dir/ebook" -c "q!" "$1/../index.norg" > /dev/null
 
     [[ -d "$1/ebook" ]] || exit 1
@@ -355,6 +356,7 @@ gen_notes_epub () {
     # necessary to be in this directory, before we invoke pandoc
     cd "${dir}"
 
+    printf "Building epub: \"$dir/${name}.epub\"\n"
 	pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
 
 	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
@@ -437,6 +439,7 @@ gen_syllabus_epub () {
     # necessary to be in this directory, before we invoke pandoc
     cd "${1}"
 
+    printf "Building epub: \"$1/${epub_name}_syllabus.epub\"\n"
 	pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
 
 	lmodt_epub_file="$1/ebook/lmodt_${epub_name}_syllabus_epub"

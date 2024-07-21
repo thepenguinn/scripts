@@ -10,6 +10,7 @@ declare -A kindle_push_files
 
 # TODO: currently we are not using this right now, maybe remove it
 kindle_push_all=0
+no_sync=0
 
 tmpdir="$TMPDIR/epubconv"
 mkdir "$tmpdir" > /dev/null 2>&1
@@ -141,16 +142,20 @@ push_kindle () {
 
         done
 
-        cp_verbose "${LOCAL_KINDLE_DIR}/home/$kdir" "${elem[@]}"
-        cp "${elem[@]}" "${LOCAL_KINDLE_DIR}/home/$kdir"
+        if [[ $no_sync == 0 ]]; then
+            cp_verbose "${LOCAL_KINDLE_DIR}/home/$kdir" "${elem[@]}"
+            cp "${elem[@]}" "${LOCAL_KINDLE_DIR}/home/$kdir"
+        fi
 
 	done
 
     # TODO: um, just push it don't ask..., maybe add a flag to
     # make this interactive
     # if kdb justcheck > /dev/null 2>&1 && ask_for_sync ; then
-    if kdb justcheck > /dev/null 2>&1 ; then
-        kdb sync
+    if [[ $no_sync == 0 ]]; then
+        if kdb justcheck > /dev/null 2>&1 ; then
+            kdb sync
+        fi
     fi
 
 }
@@ -481,6 +486,9 @@ do
 		-sn|-ns)
 			gen_type=""
 			;;
+        --no-sync)
+            no_sync=1
+            ;;
 		*)
 			arg=$(readlink -e "$arg")
 			if [[ $gen_type == "syllabus" ]]; then

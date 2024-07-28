@@ -417,19 +417,20 @@ notes_ebook () {
 }
 
 
-gen_syllabus_epub () {
+gen_syllabus_ebook () {
 
 	# First Arg --> Path to the directory that wants to be converted
 
 	local cover_img
 	local md_files
-	local epub_name
+	local ebook_name
 	local file
-	local lmodt_epub_file
-	local lmodt_epub
+	local lmodt_ebook_file
+	local lmodt_ebook
 
-	epub_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
+	ebook_name=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$1/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
+    # TODO: maybe just build cover only when we are building epub
 	gen_cover_img "$1/index.norg" "Syllabus" "syllabus"
 	cover_img="$1/ebook/cover_syllabus.png"
 
@@ -449,12 +450,90 @@ gen_syllabus_epub () {
     # necessary to be in this directory, before we invoke pandoc
     cd "${1}"
 
-    printf "Building epub: \"$1/${epub_name}_syllabus.epub\"\n"
-	pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${epub_name}_syllabus.epub" "$1/ebook/ebook.md"
+    if [[ "$output_type" == "epub" ]]; then
 
-	lmodt_epub_file="$1/ebook/lmodt_${epub_name}_syllabus_epub"
-	lmodt_epub=$(stat --printf "%Y\n" "$1/${epub_name}_syllabus.epub")
-	modified_time_norg+="$lmodt_epub_file@$lmodt_epub"$'\n'
+        printf "Building epub: \"$1/${ebook_name}_syllabus.epub\"\n"
+        pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${ebook_name}_syllabus.epub" "$1/ebook/ebook.md"
+
+        lmodt_ebook_file="$1/ebook/lmodt_${ebook_name}_syllabus_epub"
+        lmodt_ebook=$(stat --printf "%Y\n" "$1/${ebook_name}_syllabus.epub")
+        modified_time_norg+="$lmodt_ebook_file@$lmodt_ebook"$'\n'
+
+    elif [[ "$output_type" == "pdf" ]]; then
+
+        printf "Building pdf: \"$1/${ebook_name}_syllabus.pdf\"\n"
+        pandoc --template="$HOME/.config/pandoc/latex_template.latex" -H "$HOME/.config/pandoc/latex_header.tex" --no-highlight --filter pandoc-minted --variable "geometry=a4paper,margin=1in" -o "$1/${ebook_name}_syllabus.tex" "$1/ebook/ebook.md"
+
+        pdflatex -shell-escape "$1/${ebook_name}_syllabus.tex"
+
+        lmodt_ebook_file="$1/ebook/lmodt_${ebook_name}_syllabus_pdf"
+        lmodt_ebook=$(stat --printf "%Y\n" "$1/${ebook_name}_syllabus.pdf")
+        modified_time_norg+="$lmodt_ebook_file@$lmodt_ebook"$'\n'
+
+    fi
+
+
+}
+
+check_rebuild_needed_syllabus () {
+
+    # First Arg --> absolute path of the pdf or the epub file
+
+    local nmodtime
+    local lmodt_file
+    local dir
+
+    dir="${1%/*}"
+    lmodt_file="$dir/ebook/lmodt_syllabus"
+
+    if [[ -f "$1" && -f "$lmodt_file" ]]; then
+
+        nmodtime=$(stat --printf "%Y\n" "$1")
+        # this lmodt_file will have the time when the markdown
+        # was created, if the last modified time of the pdf or
+        # epub is greater than or equal this time then we don't
+        # need to rebuild
+        if [[ "$nmodtime" -ge $(cat "$lmodt_file") ]]; then
+            # we don't need to rebuild, returning a negative
+            return 1
+        fi
+
+    fi
+
+    return 0
+
+}
+
+check_rebuild_needed_notes () {
+
+    # First Arg --> absolute path of the pdf or the epub file
+
+    local nmodtime
+    local lmodt_file
+    local file_base
+    local dir
+
+    dir="${1%/*}"
+    file_base="${1##*/}"
+    file_base="${file_base%.*}"
+
+    lmodt_file="${dir}/ebook/lmodt_${file_base}"
+
+    if [[ -f "$1" && -f "$lmodt_file" ]]; then
+
+        nmodtime=$(stat --printf "%Y\n" "$1")
+        # this lmodt_file will have the time when the markdown
+        # was created, if the last modified time of the pdf or
+        # epub is greater than or equal this time then we don't
+        # need to rebuild
+        if [[ "$nmodtime" -ge $(cat "$lmodt_file") ]]; then
+            # we don't need to rebuild, returning a negative
+            return 1
+        fi
+
+    fi
+
+    return 0
 
 }
 
@@ -473,16 +552,28 @@ syllabus_ebook () {
 		title=$(sed -n "/@document.meta/,/@end/{/^title: /{s/^title: //p}}" "$dir/index.norg" | tr '[:upper:]' '[:lower:]' | tr " " _)
 
 		if ! check_pre_comp_syllabus_markdown "$dir" ; then
-			gen_markdown "$dir"
-			gen_syllabus_epub "$dir"
 
-		elif [[ ! -f "$dir/${title}_syllabus.epub" ]]; then
-			gen_syllabus_epub "$dir"
+			gen_markdown "$dir"
+            gen_syllabus_ebook "$dir"
+
+		elif [[ $output_type == "epub" ]]; then
+
+            if check_rebuild_needed_syllabus "$dir/${title}_syllabus.epub" ; then
+                gen_syllabus_ebook "$dir"
+            fi
+
+            # we are only pushing the epubs
+            add_for_push "$dir/${title}_syllabus.epub"
+
+		elif [[ $output_type == "pdf"  ]]; then
+
+            if check_rebuild_needed_syllabus "$dir/${title}_syllabus.pdf" ; then
+                gen_syllabus_ebook "$dir"
+            fi
+
 		fi
 
 		write_new_modt "modified_time_norg"
-
-		add_for_push "$dir/${title}_syllabus.epub"
 
 	done <<<"$@"
 }

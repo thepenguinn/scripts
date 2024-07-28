@@ -347,9 +347,10 @@ gen_notes_epub () {
 	local name=$(basename "${1%.norg}")
 	local dir=${1%/*}
 	local cover_img
-	local lmodt_epub_file
-	local lmodt_epub
+	local lmodt_ebook_file
+	local lmodt_ebook
 
+    # TODO: only build the cover when we are building the epub
 	gen_cover_img "$1" "Notes" "$name"
 	cover_img="${1%/*}/ebook/cover_$name.png"
 
@@ -359,19 +360,27 @@ gen_notes_epub () {
     cd "${dir}"
 
     if [[ $output_type == "epub" ]]; then
+
         printf "Building epub: \"$dir/${name}.epub\"\n"
         pandoc --lua-filter="$HOME/.config/pandoc/clean_epub_math.lua" --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
+
+        lmodt_ebook_file="$dir/ebook/lmodt_${name}_epub"
+        lmodt_ebook=$(stat --printf "%Y\n" "$dir/${name}.epub")
+        modified_time_norg+="$lmodt_ebook_file@$lmodt_ebook"$'\n'
+
     elif [[ $output_type == "pdf" ]]; then
+
         printf "Building pdf: \"$dir/${name}.pdf\"\n"
 
         pandoc -s --template="$HOME/.config/pandoc/latex_template.latex" -H "$HOME/.config/pandoc/latex_header.tex" --no-highlight --filter pandoc-minted --variable "geometry=a4paper,margin=1in" -o "$dir/${name}.tex" "$dir/ebook/$name.md"
 
         pdflatex -shell-escape "$dir/${name}.tex"
-    fi
 
-	lmodt_epub_file="$dir/ebook/lmodt_${name}_epub"
-	lmodt_epub=$(stat --printf "%Y\n" "$dir/${name}.epub")
-	modified_time_norg+="$lmodt_epub_file@$lmodt_epub"$'\n'
+        lmodt_ebook_file="$dir/ebook/lmodt_${name}_pdf"
+        lmodt_ebook=$(stat --printf "%Y\n" "$dir/${name}.pdf")
+        modified_time_norg+="$lmodt_ebook_file@$lmodt_ebook"$'\n'
+
+    fi
 
 }
 
@@ -401,15 +410,29 @@ notes_ebook () {
 			check_metadata "$file"
 
 			if ! check_pre_comp_notes_markdown "$file" ; then
+
 				gen_markdown "$dir"
 				gen_notes_epub "$file"
-			elif [[ ! -f "${file%.norg}.epub" ]]; then
-				gen_notes_epub "$file"
+
+                add_for_push "${file%.norg}.epub"
+
+            elif [[ $output_type == "epub" ]]; then
+
+                if check_rebuild_needed_notes "${file%.norg}.epub" ; then
+                    gen_notes_epub "$file"
+                fi
+
+                add_for_push "${file%.norg}.epub"
+
+            elif [[ $output_type == "pdf" ]]; then
+
+                if check_rebuild_needed_notes "${file%.norg}.pdf" ; then
+                    gen_notes_epub "$file"
+                fi
+
 			fi
 
 			write_new_modt "modified_time_norg"
-
-			add_for_push "${file%.norg}.epub"
 
 		done <<<"$norg_files"
 

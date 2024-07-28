@@ -362,7 +362,15 @@ gen_notes_epub () {
     if [[ $output_type == "epub" ]]; then
 
         printf "Building epub: \"$dir/${name}.epub\"\n"
-        pandoc --lua-filter="$HOME/.config/pandoc/clean_epub_math.lua" --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$dir/${name}.epub" "$dir/ebook/$name.md"
+
+        pandoc \
+            --lua-filter="$HOME/.config/pandoc/clean_epub_math.lua" \
+            --epub-title-page=false \
+            --css="$HOME/.config/pandoc/epub.css" \
+            --mathml \
+            --epub-cover-image "$cover_img" \
+            -o "$dir/${name}.epub" \
+            "$dir/ebook/$name.md"
 
         lmodt_ebook_file="$dir/ebook/lmodt_${name}_epub"
         lmodt_ebook=$(stat --printf "%Y\n" "$dir/${name}.epub")
@@ -372,7 +380,14 @@ gen_notes_epub () {
 
         printf "Building pdf: \"$dir/${name}.pdf\"\n"
 
-        pandoc -s --template="$HOME/.config/pandoc/latex_template.latex" -H "$HOME/.config/pandoc/latex_header.tex" --no-highlight --filter pandoc-minted --variable "geometry=a4paper,margin=1in" -o "$dir/${name}.tex" "$dir/ebook/$name.md"
+        pandoc \
+            --template="$HOME/.config/pandoc/latex_template.latex" \
+            -H "$HOME/.config/pandoc/latex_header.tex" \
+            --no-highlight \
+            --filter pandoc-minted \
+            --variable "geometry=a4paper,margin=1in" \
+            -o "$dir/${name}.tex" \
+            "$dir/ebook/$name.md"
 
         pdflatex -shell-escape "$dir/${name}.tex"
 
@@ -476,7 +491,14 @@ gen_syllabus_ebook () {
     if [[ "$output_type" == "epub" ]]; then
 
         printf "Building epub: \"$1/${ebook_name}_syllabus.epub\"\n"
-        pandoc --epub-title-page=false --css="$HOME/.config/pandoc/epub.css" --mathml --epub-cover-image "$cover_img" -o "$1/${ebook_name}_syllabus.epub" "$1/ebook/ebook.md"
+
+        pandoc \
+            --epub-title-page=false \
+            --css="$HOME/.config/pandoc/epub.css" \
+            --mathml \
+            --epub-cover-image "$cover_img" \
+            -o "$1/${ebook_name}_syllabus.epub" \
+            "$1/ebook/ebook.md"
 
         lmodt_ebook_file="$1/ebook/lmodt_${ebook_name}_syllabus_epub"
         lmodt_ebook=$(stat --printf "%Y\n" "$1/${ebook_name}_syllabus.epub")
@@ -485,7 +507,15 @@ gen_syllabus_ebook () {
     elif [[ "$output_type" == "pdf" ]]; then
 
         printf "Building pdf: \"$1/${ebook_name}_syllabus.pdf\"\n"
-        pandoc --template="$HOME/.config/pandoc/latex_template.latex" -H "$HOME/.config/pandoc/latex_header.tex" --no-highlight --filter pandoc-minted --variable "geometry=a4paper,margin=1in" -o "$1/${ebook_name}_syllabus.tex" "$1/ebook/ebook.md"
+
+        pandoc \
+            --template="$HOME/.config/pandoc/latex_template.latex" \
+            -H "$HOME/.config/pandoc/latex_header.tex" \
+            --no-highlight \
+            --filter pandoc-minted \
+            --variable "geometry=a4paper,margin=1in" \
+            -o "$1/${ebook_name}_syllabus.tex" \
+            "$1/ebook/ebook.md"
 
         pdflatex -shell-escape "$1/${ebook_name}_syllabus.tex"
 

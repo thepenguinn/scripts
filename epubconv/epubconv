@@ -391,6 +391,10 @@ gen_notes_epub () {
 
         pdflatex -shell-escape "$dir/${name}.tex"
 
+        rm "$dir/${name}.tex" \
+            "$dir/${name}.aux" \
+            "$dir/${name}.log"
+
         lmodt_ebook_file="$dir/ebook/lmodt_${name}_pdf"
         lmodt_ebook=$(stat --printf "%Y\n" "$dir/${name}.pdf")
         modified_time_norg+="$lmodt_ebook_file@$lmodt_ebook"$'\n'
@@ -518,6 +522,10 @@ gen_syllabus_ebook () {
             "$1/ebook/ebook.md"
 
         pdflatex -shell-escape "$1/${ebook_name}_syllabus.tex"
+
+        rm "$1/${ebook_name}_syllabus.tex" \
+            "$1/${ebook_name}_syllabus.aux" \
+            "$1/${ebook_name}_syllabus.log"
 
         lmodt_ebook_file="$1/ebook/lmodt_${ebook_name}_syllabus_pdf"
         lmodt_ebook=$(stat --printf "%Y\n" "$1/${ebook_name}_syllabus.pdf")

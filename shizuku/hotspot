@@ -11,11 +11,11 @@ fi
 # check for wifi state
 WifiState=$(dumpsys wifi | grep "current StateMachine mode: " | awk -F ": " '{print $2}')
 
-if [ $WifiState == "StartedState" ]; then
+if [ "$WifiState" == "StartedState" ]; then
     if [ $1 == "on" ]; then
         exit 0
     fi
-elif [ $WifiState == "ConnectModeState" ]; then
+elif [ "$WifiState" == "ConnectModeState" ]; then
     if [ $1 == "on" ]; then
         svc wifi disable
     elif [ $1 == "off" ]; then

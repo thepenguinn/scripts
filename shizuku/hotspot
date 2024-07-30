@@ -1,0 +1,36 @@
+#!/system/bin/sh
+
+# Beware, this most likely will only work on samsung phones with oneui
+# And this should ran from adb shell or shizuku shell ( rish )
+
+if [ $# != 1 ] || [ $1 != "off" ] && [ $1 != "on" ]; then
+    # TODO: print the usage
+    exit 1
+fi
+
+# check for wifi state
+WifiState=$(dumpsys wifi | grep "current StateMachine mode: " | awk -F ": " '{print $2}')
+
+if [ $WifiState == "StartedState" ]; then
+    if [ $1 == "on" ]; then
+        exit 0
+    fi
+elif [ $WifiState == "ConnectModeState" ]; then
+    if [ $1 == "on" ]; then
+        svc wifi disable
+    elif [ $1 == "off" ]; then
+        exit 0
+    fi
+fi
+
+am start -S -n com.android.settings/.TetherSettings
+input keyevent DPAD_DOWN
+
+if [ $1 == "on" ]; then
+    input keyevent DPAD_RIGHT
+elif [ $1 == "off" ]; then
+    input keyevent DPAD_LEFT
+fi
+
+# relaunches termux
+am start -n com.termux/.app.TermuxActivity

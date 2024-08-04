@@ -51,7 +51,8 @@ open_pdf() {
             termux-share -d "$1"
         else
             cp "$1" /sdcard/tmp/tmp.pdf
-            rish -c "/system/bin/am start -a android.intent.action.VIEW -d file:///sdcard/tmp/tmp.pdf -t application/pdf"
+            # rish -c "/system/bin/am start -a android.intent.action.VIEW -d file:///sdcard/tmp/tmp.pdf -t application/pdf"
+            am start -a android.intent.action.VIEW -d file:///sdcard/tmp/tmp.pdf -t application/pdf
         fi
         # we don't need this because termux-share has a -d option
 		# rish -c "input tap 812 300"
@@ -59,7 +60,8 @@ open_pdf() {
 
 	else
 
-		rish -c "/system/bin/am start com.mixplorer/.activities.EBookReaderActivity"
+		# rish -c "/system/bin/am start com.mixplorer/.activities.EBookReaderActivity"
+		am start com.mixplorer/.activities.EBookReaderActivity
 
 	fi
 

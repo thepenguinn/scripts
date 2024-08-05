@@ -270,7 +270,7 @@ update_lmodt () {
 		check_pre_comp_syllabus_markdown "$1"
 	fi
 
-	nf_notes=$(find "$1" -iname notes*.norg)
+	nf_notes=$(find "$1" -iname "notes*.norg")
 
 	while read -r file
 	do
@@ -418,7 +418,7 @@ notes_ebook () {
 			norg_files="$dir"
 			dir="${dir%/*}"
 		else
-			norg_files=$(find "$dir" -iname notes*.norg)
+			norg_files=$(find "$dir" -iname "notes*.norg")
 		fi
 
 		while read -r file

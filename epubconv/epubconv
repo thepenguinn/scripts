@@ -364,6 +364,7 @@ gen_notes_epub () {
         printf "Building epub: \"$dir/${name}.epub\"\n"
 
         pandoc \
+            --lua-filter="$HOME/.config/pandoc/common_filters.lua" \
             --lua-filter="$HOME/.config/pandoc/epub_filters.lua" \
             --epub-title-page=false \
             --css="$HOME/.config/pandoc/epub.css" \
@@ -381,6 +382,7 @@ gen_notes_epub () {
         printf "Building pdf: \"$dir/${name}.pdf\"\n"
 
         pandoc \
+            --lua-filter="$HOME/.config/pandoc/common_filters.lua" \
             --template="$HOME/.config/pandoc/latex_template.latex" \
             --include-in-header="$HOME/.config/pandoc/latex_header.tex" \
             --no-highlight \
@@ -497,6 +499,7 @@ gen_syllabus_ebook () {
         printf "Building epub: \"$1/${ebook_name}_syllabus.epub\"\n"
 
         pandoc \
+            --lua-filter="$HOME/.config/pandoc/common_filters.lua" \
             --lua-filter="$HOME/.config/pandoc/epub_filters.lua" \
             --epub-title-page=false \
             --css="$HOME/.config/pandoc/epub.css" \
@@ -514,6 +517,7 @@ gen_syllabus_ebook () {
         printf "Building pdf: \"$1/${ebook_name}_syllabus.pdf\"\n"
 
         pandoc \
+            --lua-filter="$HOME/.config/pandoc/common_filters.lua" \
             --template="$HOME/.config/pandoc/latex_template.latex" \
             --include-in-header="$HOME/.config/pandoc/latex_header.tex" \
             --no-highlight \

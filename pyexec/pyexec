@@ -1,0 +1,17 @@
+#!/bin/python
+
+from pynotesutils import utils as pnutils
+import sys
+
+if len(sys.argv) > 1:
+    try:
+        ec = pnutils.ExecClient()
+        ec.connect()
+        output = ec.exec(sys.argv[1])
+    except:
+        sys.exit(1)
+    else:
+        print(output, end = "")
+        sys.exit(0)
+
+sys.exit(1)

@@ -8,7 +8,10 @@ if len(sys.argv) > 1:
         ec = pnutils.ExecClient()
         ec.connect()
         output = ec.exec(sys.argv[1])
-    except:
+    except Exception as e:
+        print("Exec failed:")
+        for arg in e.args[0]:
+            print("    " + arg)
         sys.exit(1)
     else:
         print(output, end = "")

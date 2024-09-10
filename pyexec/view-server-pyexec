@@ -1,0 +1,6 @@
+#!/bin/python
+
+from pynotesutils import utils as pnutils
+
+vs = pnutils.ViewServer(command = "viewpdf")
+vs.start()

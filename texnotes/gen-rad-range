@@ -1,0 +1,61 @@
+#!/bin/python3
+
+from math import gcd
+import sys
+import re
+
+def gen_rad_range(times, divs, mirror = None):
+    deno = int((1 / times) * divs)
+
+    if mirror is not None:
+        for i in range(divs, 0, -1):
+            h = gcd(i, deno)
+            n = i // h
+            d = deno // h
+
+            if n == 1:
+                nume = ""
+            else:
+                nume = "%d " % (n)
+
+            if d == 1:
+                print("$-%s\\pi$, " % (nume), end = "")
+            else:
+                print("$-\\dfrac{%s\\pi}{%d}$, " % (nume, d), end = "")
+
+
+    for i in range(divs + 1):
+        h = gcd(i, deno)
+        n = i // h
+        d = deno // h
+
+        if n == 1:
+            nume = ""
+        else:
+            nume = "%d " % (n)
+
+        if n == 0:
+            print("$0$, ", end = "")
+        elif d == 1:
+            print("$%s\\pi$, " % (nume), end = "")
+        else:
+            print("$\\dfrac{%s\\pi}{%d}$, " % (nume, d), end = "")
+
+    return
+
+
+
+if len(sys.argv) == 3 or len(sys.argv) == 4:
+    if len(sys.argv) == 4:
+        if sys.argv[3] == "true":
+            gen_rad_range(float(sys.argv[1]), int(sys.argv[2]), True)
+    else:
+        gen_rad_range(float(sys.argv[1]), int(sys.argv[2]))
+else:
+    exe = sys.argv[0]
+    if exe[0] == "/":
+        exe = re.sub(r".*/", "", exe)
+    print("Usage: " + exe + " [times] [division] [mirror]")
+    print("      [times]    the right end, how many \"times\" of pi")
+    print("      [divison]  0 to [times]pi will be divided into this number of divisions")
+    print("      [mirror]   (true|false) if true the mirrors the positive axis to negative")

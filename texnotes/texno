@@ -1,0 +1,111 @@
+#!/bin/bash
+
+FORCE_INIT=0
+
+usage () {
+
+    printf "texno init [directory]\n"
+    printf " directory: if empty, the current dirctory will be initialized\n"
+
+    # printf "texno [global flags] [subcommand] [subcommand flags] directory\n"
+    # printf " init [flags] directory\n"
+    # printf " flags: \n"
+    # printf " --course: inits a course, simply init aliases to this.\n"
+    # printf " --chapter: inits a chapter.\n"
+    # printf " --work: inits a work.\n"
+    # printf " --section: inits a work.\n"
+    # printf "Don't read this, this is wip.\n"
+
+    exit 1
+}
+
+texno_init () {
+
+    local dir="$1"
+    local dir_from_root
+    local toplvl
+
+    if [[ "$dir" == "" ]] then
+        dir="."
+    fi
+
+    mkdir "${dir}" > /dev/null 2>&1
+
+    if [[ -f "${dir}/course.tex" ]]; then
+        echo "\"${dir}\" is already configured as a course directory. Aborting..."
+        exit 1
+    fi
+
+    if [[ -f "${dir}/chapter.tex" ]]; then
+        echo "\"${dir}\" is chapter directory. Aborting..."
+        exit 1
+    fi
+
+    if [[ -f "${dir}/work.tex" ]]; then
+        echo "\"${dir}\" is work directory. Aborting..."
+        exit 1
+    fi
+
+    if [[ -f "${dir}/section.tex" ]]; then
+        echo "\"${dir}\" is section directory. Aborting..."
+        exit 1
+    fi
+
+    cp "${HOME}/.config/notes/catppuccin-latte.sty" \
+        "${HOME}/.config/notes/catppuccin-mocha.sty" \
+        "${HOME}/.config/notes/catppuccin-monolight.sty" \
+        "${HOME}/.config/notes/colorscheme.sty" \
+        "${HOME}/.config/notes/course_makefile" \
+        "${HOME}/.config/notes/paperwhite.sty" \
+        "${HOME}/.config/notes/preamble.tex" \
+        "${dir}"
+
+    cp "${HOME}/.config/notes/chapter_makefile" "${dir}/Makefile"
+
+    touch "${dir}/course.tex"
+
+    if git status > /dev/null 2>&1; then
+
+        if ! gum confirm --no-show-help \
+            --default=1 --affirmative="Commit" --negative="Skip" \
+            "Do you want to commit the initialized files to git ?" ; then
+            exit 0
+        fi
+
+        toplvl=$(git rev-parse --show-toplevel)
+        dir_from_root=$(readlink -e "${dir}" | sed "s:^${toplvl}/::")
+
+        git add "${dir}/catppuccin-latte.sty" \
+            "${dir}/catppuccin-mocha.sty" \
+            "${dir}/catppuccin-monolight.sty" \
+            "${dir}/colorscheme.sty" \
+            "${dir}/course_makefile" \
+            "${dir}/paperwhite.sty" \
+            "${dir}/preamble.tex" \
+            "${dir}/Makefile" \
+            "${dir}/course.tex"
+
+        git commit -m "texno commit: initialized \`${dir_from_root}\` as course directory."
+
+    fi
+
+}
+
+parse_args () {
+    if [[ $# -lt 1 ]] then
+        usage
+    fi
+
+    case "$1" in
+        init)
+            shift 1
+            if [[ "$1" == "--force" ]]; then
+                shift 1
+                FORCE_INIT=1
+            fi
+            texno_init "${@}"
+            ;;
+    esac
+}
+
+parse_args "${@}"

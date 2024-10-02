@@ -55,6 +55,7 @@ texno_init () {
         "${HOME}/.config/notes/catppuccin-mocha.sty" \
         "${HOME}/.config/notes/catppuccin-monolight.sty" \
         "${HOME}/.config/notes/colorscheme.sty" \
+        "${HOME}/.config/notes/subtikzpicture.sty" \
         "${HOME}/.config/notes/course_makefile" \
         "${HOME}/.config/notes/paperwhite.sty" \
         "${HOME}/.config/notes/preamble.tex" \
@@ -79,6 +80,7 @@ texno_init () {
             "${dir}/catppuccin-mocha.sty" \
             "${dir}/catppuccin-monolight.sty" \
             "${dir}/colorscheme.sty" \
+            "${dir}/subtikzpicture.sty" \
             "${dir}/course_makefile" \
             "${dir}/paperwhite.sty" \
             "${dir}/preamble.tex" \

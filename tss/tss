@@ -119,6 +119,8 @@ else
 fi
 
 create_session () {
+    cd "$HOME/${parent_from_home}/$(basename "$session")"
+    tmux new-session -ds $session_name
     if [ -f $HOME/.config/tss/startup/$session_name ]; then
         # running the start up script for this session, if it exists.
         # first arg will be the $session_name second will be the relative
@@ -127,11 +129,7 @@ create_session () {
     else
         # else 0th window will be the terminal
         # and 1st will be the nvim
-        tmux send-keys -t$session_name:0 \
-            "cd ~/${parent_from_home}/$(basename "$session")" Enter
         tmux new-window -t$session_name
-        tmux send-keys -t$session_name:1 \
-            "cd ~/${parent_from_home}/$(basename "$session")" Enter
         tmux send-keys -t$session_name:1 "nvim" Enter
         tmux new-window -t$session_name
         tmux send-keys -t$session_name:2 "w3m duckduckgo.com" Enter
@@ -147,7 +145,6 @@ if [[ ! -z $TMUX || ! -z $is_tmux_running ]]; then
     # tmux is running
     echo tmux is running
     if ! tmux has-session -t$session_name 2>/dev/null; then
-        tmux new-session -ds $session_name
         create_session
     fi
 
@@ -158,7 +155,6 @@ if [[ ! -z $TMUX || ! -z $is_tmux_running ]]; then
 else
     # tmux is not running
     echo tmux is not running
-    tmux new-session -ds $session_name
     create_session
     tmux attach
 fi

@@ -24,6 +24,7 @@ texno_init () {
     local dir="$1"
     local dir_from_root
     local toplvl
+    local cwd=$(pwd)
 
     if [[ "$dir" == "" ]] then
         dir="."
@@ -56,14 +57,18 @@ texno_init () {
         "${HOME}/.config/notes/catppuccin-monolight.sty" \
         "${HOME}/.config/notes/colorscheme.sty" \
         "${HOME}/.config/notes/subtikzpicture.sty" \
-        "${HOME}/.config/notes/course_makefile" \
         "${HOME}/.config/notes/paperwhite.sty" \
         "${HOME}/.config/notes/preamble.tex" \
         "${dir}"
 
-    cp "${HOME}/.config/notes/chapter_makefile" "${dir}/Makefile"
+    cp "${HOME}/.config/notes/course_makefile" "${dir}/Makefile"
 
     touch "${dir}/course.tex"
+
+    lunatikz init "${dir}"
+    cd "${dir}"
+    lunatikz add --build-entry course.tex
+    cd "${cwd}"
 
     if git status > /dev/null 2>&1; then
 
@@ -81,7 +86,6 @@ texno_init () {
             "${dir}/catppuccin-monolight.sty" \
             "${dir}/colorscheme.sty" \
             "${dir}/subtikzpicture.sty" \
-            "${dir}/course_makefile" \
             "${dir}/paperwhite.sty" \
             "${dir}/preamble.tex" \
             "${dir}/Makefile" \

@@ -1,13 +1,13 @@
 #!/bin/bash
 
-work_dirs="$HOME/projects:$HOME/projects/scripts:$HOME/stupid:$HOME/projects/dotfiles:$HOME/notes"
+work_dirs="$HOME/projects:$HOME/projects/scripts:$HOME/fun:$HOME/projects/dotfiles:$HOME/notes"
 
 declare -A session_suffix_table
 
 session_suffix_table+=( \
     ["projects.scripts"]="srp" \
     ["projects"]="prj" \
-    ["stupid"]="stp" \
+    ["fun"]="fun" \
     ["notes"]="nts" \
     ["projects.dotfiles"]="dot" \
 )

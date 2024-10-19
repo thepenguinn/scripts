@@ -51,9 +51,11 @@ create_music_session () {
             # there are no utils session
             # so create the session too
             tmux new-session -d -s utils -n music
+            tmux send-keys -t utils:music "stm" Enter
         else
             # just need to create the music window
             tmux new-window -d -t utils -n music
+            tmux send-keys -t utils:music "stm" Enter
         fi
     fi
 }

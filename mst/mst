@@ -1,0 +1,29 @@
+#!/system/xbin/bash
+
+# script indended for JF, to set sleep timer for mpd
+
+usage () {
+    printf "mst [time]\n"
+    printf " time: same as the argument giving to \`sleep\`\n"
+    exit 1
+}
+
+mst () {
+    printf "Setting timer for: "
+    echo "${@}"
+
+    sleep "${@}"
+
+    mpc repeat off
+}
+
+if [[ $(whoami) != "root" ]]; then
+    echo "Execute as root..."
+    exit 1
+fi
+
+if [[ ${@} == "" ]]; then
+    usage
+fi
+
+mst "${@}"

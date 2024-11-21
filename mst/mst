@@ -15,6 +15,7 @@ mst () {
     sleep "${@}"
 
     mpc repeat off
+    mpc single on
 }
 
 if [[ $(whoami) != "root" ]]; then

@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# first param: a string
+get_id () {
+    grep -o "[^/]\{33\}" <<<"${1}" | head -n 1
+
+}
+
+# first param: id
+# second param: output path
+dl_file () {
+    wget "https://drive.google.com/uc?export=download&id=${1}" -O "${2}"
+}
+
+if [[ "${1}" == "-c" ]]; then
+    link=$(termux-clipboard-get)
+else
+    link="${1}"
+fi
+
+id=$(get_id "${link}")
+
+if [[ "$id" == "" ]]; then
+    echo "Couldn't get id from: " "${link}"
+    exit 1
+fi
+
+if [[ "${2}" == "" ]]; then
+    output="${id}"
+else
+    output="${2}"
+fi
+
+dl_file "${id}" "${output}"

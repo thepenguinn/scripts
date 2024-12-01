@@ -27,3 +27,19 @@ chmod_and_link "${PWD}/texnotes/gen-rad-range" "${Bin_Dir}"
 chmod_and_link "${PWD}/texnotes/texno" "${Bin_Dir}"
 chmod_and_link "${PWD}/stm/stm" "${Bin_Dir}"
 chmod_and_link "${PWD}/gdl/gdl" "${Bin_Dir}"
+
+# Checking whether we are on Android or not
+# This is how pfetch checks for Android
+if [ -d /system/app ] && [ -d /system/priv-app ]; then
+    echo "pkgd: You need:"
+    echo "      Permission to internal storage."
+    echo "      Working Shizuku installed and rish setted up."
+    echo "      \`aapt\` installed at \`/data/local/tmp/bin/\`."
+    echo "      If you have already done these ignore this."
+
+    mkdir "${HOME}/storage/shared/pkgdisabler" > /dev/null 2>&1
+    mkdir "${HOME}/storage/shared/pkgdisabler/tmp" > /dev/null 2>&1
+    mkdir "${HOME}/storage/shared/pkgdisabler/scripts" > /dev/null 2>&1
+    cp "${PWD}/pkgd/getpkglist.sh" "${HOME}/storage/shared/pkgdisabler/scripts"
+    chmod_and_link "${PWD}/pkgd/pkgd" "${Bin_Dir}"
+fi

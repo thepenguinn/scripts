@@ -6,6 +6,9 @@ usage () {
 	printf "wip\n"
 }
 
+# i have no idea what this thing is trying to do :), maybe checking
+# whether shizuku is running... ? right now we are not calling this
+# function
 check_for_shizuku () {
 	if [[ ! $(rish -c "cat /data/local/tmp/checkshizuku") == "yes" ]]; then
 		am start moe.shizuku.privileged.api/moe.shizuku.manager.MainActivity > /dev/null 2>&1
@@ -14,7 +17,11 @@ check_for_shizuku () {
 }
 
 get_pkgs () {
-	rish -c "export PWD && /data/local/tmp/bin/bash /sdcard/src/scripts/pkgd/getpkglist.sh" | fzf -m || exit 1
+    # you would never. ever. want to disable these two.
+	rish -c "sh /sdcard/pkgdisabler/scripts/getpkglist.sh" \
+        | grep -vi termux \
+        | grep -vi shizuku \
+        | fzf -m || exit 1
 }
 
 ask_confirm () {
@@ -42,7 +49,8 @@ toggle_pkgstate() {
 		pkgstate=$(tr -d ] <<<"${line##*[}")
 		case $pkgname in
 			moe.shizuku.privileged.api)
-				ask_confirm $pkgname
+				# ask_confirm $pkgname
+                exit 1
 				;;
 			com.termux)
 				printf "lol, you thought...\n"
@@ -52,6 +60,14 @@ toggle_pkgstate() {
 				;;
 		esac
 		if [[ $pkgstate == "Disabled" ]]; then
+            case $pkgname in
+                org.polymorphicshade.tubular)
+                    echo "Tubular: Ohh please, fuck off."
+                    continue
+                    ;;
+                *)
+                    ;;
+            esac
 			okcmd+=$(printf "pm enable ${pkgname};")
 		elif [[ $pkgstate == "Enabled" ]]; then
 			okcmd+=$(printf "pm disable-user ${pkgname};")
@@ -62,5 +78,5 @@ toggle_pkgstate() {
 	rish -c "$okcmd"
 }
 
-check_for_shizuku
+# check_for_shizuku
 toggle_pkgstate "$(get_pkgs)"

@@ -70,9 +70,9 @@ get_nonlabeledpkgs() {
 	local need_to_rm
 	if [[ -f $pkg_listf ]]; then
 		pkg_list=$(cat $pkg_listf)
-		cur_pkglist=$(pm list packages -d -f | sed 's/^package://;s/\(.*\)=/\1@/;s/$/@Disabled/';pm list packages -e -f | sed 's/^package://;s/\(.*\)=/\1@/;s/$/@Enabled/')
+		cur_pkglist=$(pm list packages -3 -d -f | sed 's/^package://;s/\(.*\)=/\1@/;s/$/@Disabled/';pm list packages -3 -e -f | sed 's/^package://;s/\(.*\)=/\1@/;s/$/@Enabled/')
 
-		sort -t "@" -k2 <<<"$cur_pkglist" > ${pkgd_tmp_dir}/cur 
+		sort -t "@" -k2 <<<"$cur_pkglist" > ${pkgd_tmp_dir}/cur
 		awk -F "@" '{print $2 "@" $3 "@" $4}' "$pkg_listf" | sort -t "@" -k2 > ${pkgd_tmp_dir}/old
 		#fuck diff, there is no flag to change the /tmp dir.
 		#Maybe fuck Android...
@@ -85,12 +85,12 @@ get_nonlabeledpkgs() {
 		[[ -z $need_to_rm ]] || rm_non_pkgs $need_to_rm
 
 	else
-		get_pkglabel $(pm list packages -d -f | sed "s/^package://s/.apk=/.apk@/;s/$/@Disabled/")
-		get_pkglabel $(pm list packages -e -f | sed "s/^package://s/.apk=/.apk@/;s/$/@Enabled/")
+		get_pkglabel $(pm list packages -3 -d -f | sed "s/^package://s/.apk=/.apk@/;s/$/@Disabled/")
+		get_pkglabel $(pm list packages -3 -e -f | sed "s/^package://s/.apk=/.apk@/;s/$/@Enabled/")
 	fi
 
 	pkg_list+="\n$pkg_info"
-	printf -- "$pkg_list" | awk -F "@" '{print $1 " --> [" $3 "] [" $4 "]"}'
+	printf "$pkg_list" | awk -F "@" '{print $1 " --> [" $3 "] [" $4 "]"}'
 }
 
 get_nonlabeledpkgs

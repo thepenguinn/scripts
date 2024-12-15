@@ -13,5 +13,5 @@ if [[ "$current_session_by_name" == "utils:music" ]]; then
 else
     # not in utils:music, switch to the music
     tmux set -g @_last_before_music "$current_session_by_id"
-    ~/.local/bin/tss music
+    ~/.local/bin/tss utils:music
 fi

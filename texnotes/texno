@@ -66,6 +66,7 @@ texno_init () {
 
 
     cp "${HOME}/.config/notes/${NOTE_TYPE}/main_makefile" "${dir}/Makefile"
+    cp "${HOME}/.config/notes/${NOTE_TYPE}/texno.config" "${dir}"
     touch "${dir}/${NOTE_TYPE}.tex"
 
     lunatikz init "${dir}"
@@ -92,6 +93,7 @@ texno_init () {
             "${dir}/paperwhite.sty" \
             "${dir}/preamble.tex" \
             "${dir}/Makefile" \
+            "${dir}/texno.config" \
             "${dir}/${NOTE_TYPE}.tex"
 
         git commit -m "texno commit: initialized \`${dir_from_root}\` as course directory."

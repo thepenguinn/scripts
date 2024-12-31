@@ -1,6 +1,8 @@
 #!/bin/bash
 
 FORCE_INIT=0
+NOTE_TYPE="course"
+DIR=""
 
 usage () {
 
@@ -19,6 +21,7 @@ usage () {
     exit 1
 }
 
+# First arg --> directory to initialize (optional)
 texno_init () {
 
     local dir="$1"
@@ -30,7 +33,7 @@ texno_init () {
         dir="."
     fi
 
-    mkdir "${dir}" > /dev/null 2>&1
+    mkdir -p "${dir}" > /dev/null 2>&1
 
     if [[ -f "${dir}/course.tex" ]]; then
         echo "\"${dir}\" is already configured as a course directory. Aborting..."
@@ -61,13 +64,13 @@ texno_init () {
         "${HOME}/.config/notes/preamble.tex" \
         "${dir}"
 
-    cp "${HOME}/.config/notes/course_makefile" "${dir}/Makefile"
 
-    touch "${dir}/course.tex"
+    cp "${HOME}/.config/notes/${NOTE_TYPE}/main_makefile" "${dir}/Makefile"
+    touch "${dir}/${NOTE_TYPE}.tex"
 
     lunatikz init "${dir}"
     cd "${dir}"
-    lunatikz add --build-entry course.tex
+    lunatikz add --build-entry ${NOTE_TYPE}.tex
     cd "${cwd}"
 
     if git status > /dev/null 2>&1; then
@@ -89,7 +92,7 @@ texno_init () {
             "${dir}/paperwhite.sty" \
             "${dir}/preamble.tex" \
             "${dir}/Makefile" \
-            "${dir}/course.tex"
+            "${dir}/${NOTE_TYPE}.tex"
 
         git commit -m "texno commit: initialized \`${dir_from_root}\` as course directory."
 
@@ -104,14 +107,44 @@ parse_args () {
 
     case "$1" in
         init)
-            shift 1
-            if [[ "$1" == "--force" ]]; then
+            while true ; do
                 shift 1
-                FORCE_INIT=1
-            fi
-            texno_init "${@}"
+                if [[ "$1" == "" ]]; then
+                    break
+                fi
+
+                case "$1" in
+                    --force|-f)
+                        FORCE_INIT=1
+                        ;;
+                    --type|-t)
+                        shift 1
+                        case "$1" in
+                            course)
+                                NOTE_TYPE="course"
+                                ;;
+                            main)
+                                NOTE_TYPE="main"
+                                ;;
+                            *)
+                                echo "Unknown type: \"$1\". Exiting." >&2
+                                exit 1
+                        esac
+                        ;;
+                    *)
+                        DIR="$1"
+                        ;;
+                esac
+
+            done
+            ;;
+        *)
+            echo "Unknown subcommand: \"$1\". Exiting." >&2
+            exit 1
             ;;
     esac
 }
 
 parse_args "${@}"
+texno_init "$DIR"
+exit 0

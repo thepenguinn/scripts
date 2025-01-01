@@ -64,6 +64,10 @@ texno_init () {
         "${HOME}/.config/notes/preamble.tex" \
         "${dir}"
 
+    if [[ $NOTE_TYPE == "main" ]]; then
+        cp "${HOME}/.config/notes/abstract.tex" "${dir}/abstract_template.tex"
+        touch "${dir}/abstract.tex"
+    fi
 
     cp "${HOME}/.config/notes/${NOTE_TYPE}/main_makefile" "${dir}/Makefile"
     cp "${HOME}/.config/notes/${NOTE_TYPE}/texno.config" "${dir}"
@@ -96,7 +100,11 @@ texno_init () {
             "${dir}/texno.config" \
             "${dir}/${NOTE_TYPE}.tex"
 
-        git commit -m "texno commit: initialized \`${dir_from_root}\` as course directory."
+        if [[ $NOTE_TYPE == "main" ]]; then
+            git add "${dir}/abstract_template.tex"
+        fi
+
+        git commit -m "texno commit: initialized \`${dir_from_root}\` as notes directory of type \`${NOTE_TYPE}\`."
 
     fi
 

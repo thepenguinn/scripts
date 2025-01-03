@@ -141,6 +141,7 @@ do
         exit 1
     elif [[ "$arg" == "-c" ]]; then
         tmp_url="$(termux-clipboard-get)"
+        echo "Clipboard contents: \"${tmp_url}\""
         if [[ "$tmp_url" =~ (http|https)://* ]]; then
             Urls+=( "\"$tmp_url\"" )
         else

@@ -6,6 +6,7 @@ unset cmodt
 unset file
 unset force
 unset back
+unset no_timestamp
 
 [[ $1 == "" ]] && exit 1
 
@@ -13,7 +14,12 @@ check_timestamp() {
 
 	# Arg 1 --> the relative or absoulute path of the pdf file
 
+    if [[ $no_timestamp == 1 ]]; then
+        return 1
+    fi
+
 	timestamp_file="${1%.*}.tstp"
+    echo "$timestamp_file"
 	lmodt=$(cat $timestamp_file 2>/dev/null)
 	cmodt=$(stat --printf "%Y" "$1")
 
@@ -56,7 +62,10 @@ open_pdf() {
         fi
         # we don't need this because termux-share has a -d option
 		# rish -c "input tap 812 300"
-		printf "$cmodt" > "$timestamp_file"
+        if [[ -z $no_timestamp ]]; then
+            printf "$cmodt" > "$timestamp_file"
+        fi
+
 
 	else
 
@@ -75,6 +84,9 @@ do
 			;;
         -b|--background)
             back=1
+            ;;
+        --no-timestamp)
+            no_timestamp=1
             ;;
 		*)
 			file="$arg"

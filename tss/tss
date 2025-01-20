@@ -48,7 +48,7 @@ create_utils_proot_window () {
             tmux new-window -d -t utils -n proot
         fi
 
-        tmux send-keys -t utils:proot "proot-distro login archlinux \
+        tmux send-keys -t utils:proot "proot-distro login --shared-tmp archlinux \
             --bind /data/data/com.termux/files/home:/home/daniel" Enter \
             "cd /home/daniel" Enter "/usr/sbin/sshd" Enter "su daniel" Enter \
             "printf \"\033[5A\033[31;1m  Proot Instance: Don't use this instance directly,\n      \

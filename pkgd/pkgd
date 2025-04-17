@@ -65,6 +65,10 @@ toggle_pkgstate() {
                     echo "Tubular: Ohh please, fuck off."
                     continue
                     ;;
+                com.olx.southasia)
+                    echo "OLX: Ohh please, fuck off."
+                    continue
+                    ;;
                 *)
                     ;;
             esac

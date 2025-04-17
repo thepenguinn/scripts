@@ -1,0 +1,33 @@
+#!/bin/bash
+
+usage() {
+    printf "mono - toggles monochromacy of the display (Android)\n\n"
+    printf "[usage]: mono <arg>\n\n"
+    printf "[arg]\n"
+    printf "    -h:            to print this help\n"
+    printf "    0:             to disable monochromacy\n"
+    printf "    anything else: to enable monochromacy\n"
+
+}
+
+case ${1} in
+
+    0)
+        ttypioca timer-run
+        if [[ $(cat ${HOME}/.cache/typioca/wpm) -ge 50 ]]; then
+            rish settings put secure accessibility_display_daltonizer_enabled 0
+        else
+            echo Sorry, wpm less than 50, cannot disable monochromacy.
+            exit 1
+        fi
+        ;;
+    -h)
+        usage
+        exit 1
+        ;;
+    *)
+        rish settings put secure accessibility_display_daltonizer_enabled 1
+        ;;
+esac
+
+exit 0

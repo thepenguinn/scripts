@@ -1,0 +1,36 @@
+#!/bin/bash
+
+Bat_Cap_File="/sys/class/power_supply/BAT0/capacity"
+
+while true
+do
+    # this is lame, fix it.
+    if [[ $(date +"%p") == "AM" ]]; then
+        xsetroot -name "   󰪥   󰪥   󰪥   󰪥      $(cat $Bat_Cap_File)    $(date +"%I:%M ")    "
+    else
+        xsetroot -name "   󰪥   󰪥   󰪥   󰪥      $(cat $Bat_Cap_File)    $(date +"%I:%M ") 󰪥   "
+    fi
+
+    sleep 2
+done
+
+#  // large
+#  // large
+#  // large
+# 󱤅 // battery saver
+# 󰪥 // battery normal
+# 󰠠 // battery charging
+
+
+# 
+# 󰫽 󰫺
+# 󱎥
+# 󰫺
+#   󰪥  
+#  // large
+#  // small
+# 󰪥
+#  //large
+#  // small
+#  // um
+#  // really small

@@ -73,6 +73,21 @@ create_utils_music_window () {
     fi
 }
 
+create_utils_general_window () {
+
+    if ! tmux has-session -t utils:general 2>/dev/null; then
+        # there is no general window
+        if ! tmux has-session -t utils 2>/dev/null; then
+            # there are no utils session
+            # so create the session too
+            create_utils_session general
+        else
+            # create the general window
+            tmux new-window -d -t utils -n general
+        fi
+    fi
+}
+
 create_session () {
 
     local session="${1}"
@@ -187,6 +202,10 @@ main () {
             utils:music)
                 create_utils_music_window
                 last_creation="utils:music"
+                ;;
+            utils:general)
+                create_utils_general_window
+                last_creation="utils:general"
                 ;;
             general)
                 create_general_session

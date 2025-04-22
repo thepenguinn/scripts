@@ -4,14 +4,20 @@ Bat_Cap_File="/sys/class/power_supply/BAT0/capacity"
 
 while true
 do
-    # this is lame, fix it.
-    if [[ $(date +"%p") == "AM" ]]; then
-        xsetroot -name "   󰪥   󰪥   󰪥   󰪥      $(cat $Bat_Cap_File)    $(date +"%I:%M ")    "
-    else
-        xsetroot -name "   󰪥   󰪥   󰪥   󰪥      $(cat $Bat_Cap_File)    $(date +"%I:%M ") 󰪥   "
-    fi
+    # TODO: this is lame, fix it.
 
-    sleep 2
+    Bat_Cap=$(cat $Bat_Cap_File)
+
+    for i in $(seq 1 5)
+    do
+        if [[ $(date +"%p") == "AM" ]]; then
+            xsetroot -name "   󰪥   󰪥   󰪥   󰪥      ${Bat_Cap}    $(date +"%I:%M:%S ")    "
+        else
+            xsetroot -name "   󰪥   󰪥   󰪥   󰪥      ${Bat_Cap}    $(date +"%I:%M:%S ") 󰪥   "
+        fi
+        sleep 1
+    done
+
 done
 
 #  // large

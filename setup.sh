@@ -28,6 +28,7 @@ chmod_and_link "${PWD}/texnotes/texno" "${Bin_Dir}"
 chmod_and_link "${PWD}/stm/stm" "${Bin_Dir}"
 chmod_and_link "${PWD}/gdl/gdl" "${Bin_Dir}"
 chmod_and_link "${PWD}/mono/mono" "${Bin_Dir}"
+chmod_and_link "${PWD}/journey/journey" "${Bin_Dir}"
 chmod_and_link "${PWD}/dwmlapstatus/dwmlapstatus" "${Bin_Dir}"
 
 # Checking whether we are on Android or not

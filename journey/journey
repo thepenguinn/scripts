@@ -1,0 +1,36 @@
+#!/bin/bash
+
+usage () {
+    printf "journey <file base path>\n"
+}
+
+File_Base_Path="${1}"
+
+if [[ "$File_Base_Path" =~ .*.gpg ]]; then
+    File_Base_Path=${File_Base_Path%.gpg}
+fi
+
+if [[ "$File_Base_Path" =~ .*.norg ]]; then
+    File_Base_Path=${File_Base_Path%.norg}
+fi
+
+if [[ ! -f "${File_Base_Path}.norg.gpg" ]]; then
+    if [[ ! -f "${File_Base_Path}.norg" ]]; then
+        echo "Journal: \"$File_Base_Path\""
+        printf "Journal doesn't exists, do you want to create it?[y/n] "
+        read -r create_it
+        if [[ "$create_it" =~ y|Y ]]; then
+            echo "Creating the Journal: \"$File_Base_Path\""
+            touch "${File_Base_Path}.norg"
+        else
+            echo "Exiting..."
+            exit 1
+        fi
+    fi
+    echo "Creating *.gpg file from *.norg file"
+    gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg"
+fi
+
+gpg -d -o "${File_Base_Path}.norg" "${File_Base_Path}.norg.gpg" && rm "${File_Base_Path}.norg.gpg"
+nvim +TZAtaraxis "${File_Base_Path}.norg"
+gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg"

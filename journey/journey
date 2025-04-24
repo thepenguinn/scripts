@@ -31,6 +31,8 @@ if [[ ! -f "${File_Base_Path}.norg.gpg" ]]; then
     gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg"
 fi
 
-gpg -d -o "${File_Base_Path}.norg" "${File_Base_Path}.norg.gpg" && rm "${File_Base_Path}.norg.gpg"
-nvim +TZAtaraxis "${File_Base_Path}.norg"
-gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg"
+if gpg -d -o "${File_Base_Path}.norg" "${File_Base_Path}.norg.gpg"; then
+    mv "${File_Base_Path}.norg.gpg" "${File_Base_Path}.norg.gpg.bak"
+    nvim +TZAtaraxis "${File_Base_Path}.norg"
+fi
+gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg.gpg.bak"

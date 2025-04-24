@@ -34,5 +34,5 @@ fi
 if gpg -d -o "${File_Base_Path}.norg" "${File_Base_Path}.norg.gpg"; then
     mv "${File_Base_Path}.norg.gpg" "${File_Base_Path}.norg.gpg.bak"
     nvim +TZAtaraxis "${File_Base_Path}.norg"
+    gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg.gpg.bak"
 fi
-gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg.gpg.bak"

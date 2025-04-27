@@ -1,0 +1,17 @@
+#!/bin/bash
+
+Notify_Int=23487
+
+mac_to_ip () {
+    local mac="$1"
+    ip neigh | grep "${mac}" | grep "\." | cut -d" " -f1
+}
+
+notify-send -r $Notify_Int -t 3000 "Scrcpy" "Connecting to Samsung A50s..."
+# if scrcpy --always-on-top --keyboard=uhid --mouse=uhid --audio-dup --window-width=400 --window-height=860 --window-title=a50s --tcpip --turn-screen-off ; then
+# if scrcpy --keyboard=uhid --mouse=uhid --audio-dup --window-title=a50s --tcpip=$(mac_to_ip "$AF_MAC_ADDR"):5555 --turn-screen-off ; then
+if scrcpy --audio-dup --window-title=a50s --tcpip=$(mac_to_ip "$AF_MAC_ADDR"):5555 --turn-screen-off ; then
+    notify-send -r $Notify_Int -t 2000 "Scrcpy" "Exiting..."
+else
+    notify-send -r $Notify_Int -t 2000 "Scrcpy" "Couldn't connect to Samsung A50s..."
+fi

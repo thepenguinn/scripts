@@ -4,6 +4,7 @@ usage () {
     printf "journey <file base path>\n"
 }
 
+User="daniel"
 File_Base_Path="${1}"
 
 if [[ -z "$File_Base_Path" ]]; then
@@ -33,11 +34,11 @@ if [[ ! -f "${File_Base_Path}.norg.gpg" ]]; then
         fi
     fi
     echo "Creating *.gpg file from *.norg file"
-    gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg"
+    gpg -e -r "${User}" "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg"
 fi
 
 if gpg -d -o "${File_Base_Path}.norg" "${File_Base_Path}.norg.gpg"; then
     mv "${File_Base_Path}.norg.gpg" "${File_Base_Path}.norg.gpg.bak"
     nvim "+set spell" "+TZAtaraxis" "${File_Base_Path}.norg"
-    gpg -e -r $(whoami) "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg.gpg.bak"
+    gpg -e -r "${User}" "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg.gpg.bak"
 fi

@@ -6,6 +6,11 @@ usage () {
 
 File_Base_Path="${1}"
 
+if [[ -z "$File_Base_Path" ]]; then
+    usage
+    exit 1
+fi
+
 if [[ "$File_Base_Path" =~ .*.gpg ]]; then
     File_Base_Path=${File_Base_Path%.gpg}
 fi

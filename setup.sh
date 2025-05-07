@@ -31,6 +31,7 @@ chmod_and_link "${PWD}/mono/mono" "${Bin_Dir}"
 chmod_and_link "${PWD}/journey/journey" "${Bin_Dir}"
 chmod_and_link "${PWD}/dwmlapstatus/dwmlapstatus" "${Bin_Dir}"
 chmod_and_link "${PWD}/a50scpy/a50scpy" "${Bin_Dir}"
+chmod_and_link "${PWD}/a50scpy/a50scpy-headless" "${Bin_Dir}"
 
 # Checking whether we are on Android or not
 # This is how pfetch checks for Android

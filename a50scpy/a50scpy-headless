@@ -1,0 +1,29 @@
+#!/bin/bash
+
+Notify_Int=23487
+
+mac_to_ip () {
+    local mac="$1"
+    ip neigh | grep "${mac}" | grep "\." | cut -d" " -f1
+}
+
+Win_Info=$(xwininfo -id $(xdotool getwindowfocus))
+X_Pos=$(grep "Absolute upper-left X:" <<<"$Win_Info" | cut -d: -f2 | tr -d " ")
+Y_Pos=$(grep "Absolute upper-left Y:" <<<"$Win_Info" | cut -d: -f2 | tr -d " ")
+
+if [[ -z "$X_Pos" ]]; then
+    X_Pos="auto"
+fi
+
+if [[ -z "$Y_Pos" ]]; then
+    Y_Pos="auto"
+fi
+
+notify-send -r $Notify_Int -t 3000 "Scrcpy" "Connecting to Samsung A50s..."
+# if scrcpy --always-on-top --keyboard=uhid --mouse=uhid --audio-dup --window-width=400 --window-height=860 --window-title=a50s --tcpip --turn-screen-off ; then
+# if scrcpy --keyboard=uhid --mouse=uhid --audio-dup --window-title=a50s --tcpip=$(mac_to_ip "$AF_MAC_ADDR"):5555 --turn-screen-off ; then
+if scrcpy --window-x "$X_Pos" --window-y "$Y_Pos" --window-title=a50s-headless --mouse=uhid --tcpip=$(mac_to_ip "$AF_MAC_ADDR"):5555 --no-video ; then
+    notify-send -r $Notify_Int -t 2000 "Scrcpy" "Disconnected from Samsung A50s..."
+else
+    notify-send -r $Notify_Int -t 2000 "Scrcpy" "Couldn't connect to Samsung A50s..."
+fi

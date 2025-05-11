@@ -1,0 +1,18 @@
+#!/bin/bash
+
+Tmp_Dir="${HOME}/.cache/qralarm"
+QRCode_Path="${Tmp_Dir}/qrcode.png"
+
+if [[ ! -d "$Tmp_Dir" ]]; then
+    mkdir -p "$Tmp_Dir"
+fi
+
+ttypioca timer-run
+if [[ $(cat ${HOME}/.cache/typioca/wpm) -ge 50 ]]; then
+    qrencode -l L -v 1 -o "${QRCode_Path}" "Out of every one-hundred men, ten shouldn’t even be there, eighty are just targets, nine are the real fighters, and we are lucky to have them, for they make the battle. Ah, but the one, one is a warrior and he will bring the others back."
+    devour sxiv -b "${QRCode_Path}"
+    rm "${QRCode_Path}"
+else
+    echo Sorry, wpm less than 50, cannot show the qrcode.
+    exit 1
+fi

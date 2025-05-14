@@ -88,6 +88,16 @@ create_utils_general_window () {
     fi
 }
 
+create_utilsterm_general_window () {
+
+    create_utils_general_window
+
+    if ! tmux has-session -t utilsterm 2>/dev/null; then
+        # there is no utilsterm session
+        tmux new-session -d -t utils:general -s utilsterm
+    fi
+}
+
 create_session () {
 
     local session="${1}"
@@ -206,6 +216,10 @@ main () {
             utils:general)
                 create_utils_general_window
                 last_creation="utils:general"
+                ;;
+            utilsterm:general)
+                create_utilsterm_general_window
+                last_creation="utilsterm:general"
                 ;;
             general)
                 create_general_session

@@ -155,9 +155,15 @@ create_session_from_dir () {
 
     session_name=$(basename "$session" | tr " " "_")
 
-    parent_from_home=$(sed "s#^${HOME}/##" <<<"$session")
-    parent_from_home=${parent_from_home%/*}
-    suffix_hash=$(tr "/" "." <<<"$parent_from_home")
+    parent_from_home=$(sed "s#^${HOME}##" <<<"$session")
+    if [[ ${parent_from_home%/*} == "" ]]; then
+        suffix_hash=$(tr "/" "." <<<"${parent_from_home#/}")
+        parent_from_home="."
+    else
+        parent_from_home=${parent_from_home%/*}
+        parent_from_home=${parent_from_home#/}
+        suffix_hash=$(tr "/" "." <<<"${parent_from_home}")
+    fi
 
     if [[ ! -z "${Session_Suffix_Table[${suffix_hash}]}" ]]; then
         session_name="${session_name}-${Session_Suffix_Table[${suffix_hash}]}"

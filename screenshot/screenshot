@@ -1,0 +1,147 @@
+#!/bin/bash
+
+Notify_Int=24443
+Tmp_Dir="${HOME}/.cache/screenshot"
+Screenshot_Dir="${HOME}/screenshots"
+
+dmenu_icon_menu() {
+    dmenu -fn "Material Design Icons:style=Regular:size=36" -vi -nm -ni -g 4 -w 114 -h 90 -ae 1 -eg 24
+}
+
+
+timer_menu() {
+
+    local default="$1"
+
+    local choice
+
+    choice=$(printf "󱂉\n󱂋\n󱂍\n󱂏\n" | dmenu_icon_menu)
+
+    # choice=$(printf "󰎹\n󰎹\n󰎹\n󰎹\n" | dmenu_icon_menu)
+
+    case "$choice" in
+        󱂉)
+            echo 2
+            ;;
+        󱂋)
+            echo 4
+            ;;
+        󱂍)
+            echo 6
+            ;;
+        󱂏)
+            echo 8
+            ;;
+        *)
+            echo $default
+            ;;
+    esac
+
+}
+
+time_sleep() {
+
+    local time_choice="$1"
+    local seconds
+
+    if [[ $time_choice != 0 ]]; then
+        for seconds in $(seq 1 $time_choice | sort -r)
+        do
+            notify-send -i "$(pwd)/awesome/good/circle-slice-5.png" -r $Notify_Int -t 1500 "Screenshot" "Screenshot in $seconds seconds"
+            # notify-send -i "$(pwd)/awesome/good/image-filter-center-focus.png" -r $Notify_Int -t 1500 "Screenshot" "Screenshot in $seconds seconds"
+            sleep 1
+        done
+        dunstctl close $Notify_Int
+    fi
+
+    sleep 0.2
+
+}
+
+main_menu() {
+
+    local choice
+    local time_choice=0
+    local screenshot_file="$Screenshot_Dir/screenshot_full_$(date "+%F_%H-%M-%S").png"
+
+    maim -u -m 10 -b 3 "$Tmp_Dir/tmp.png" &
+
+    while true
+    do
+        choice=$(printf "󰋱\n\n󰮐\n󰔚\n" | dmenu_icon_menu)
+
+        case "$choice" in
+            󰋱)
+                # take a new screenshot
+                time_sleep "$time_choice"
+                screenshot_file="$Screenshot_Dir/screenshot_full_$(date "+%F_%H-%M-%S").png"
+                maim -u -m 10 -b 3 "$screenshot_file"
+                notify-send -i "$screenshot_file" -r $Notify_Int -t 2000 "Screenshot" "Screenshot taken"
+                break
+                ;;
+            )
+                # save the screenshot took at the launch
+                cp "$Tmp_Dir/tmp.png" "$screenshot_file"
+                notify-send -i "$screenshot_file" -r $Notify_Int -t 2000 "Screenshot" "Screenshot taken"
+                break
+                ;;
+            󰮐)
+                # take a crop / select screenshot
+                time_sleep 0
+                screenshot_file="$Screenshot_Dir/screenshot_crop_$(date "+%F_%H-%M-%S").png"
+                if maim -u -s -m 10 -b 3 "$screenshot_file" ; then
+                    notify-send -i "$screenshot_file" -r $Notify_Int -t 2000 "Screenshot" "Screenshot taken"
+                else
+                    notify-send -i "$(pwd)/awesome/good/circle-slice-5.png" -r $Notify_Int -t 1000 "Screenshot" "Screenshot cancelled"
+                fi
+                break
+                ;;
+            󰔚)
+                # set timer
+                time_choice=$(timer_menu $time_choice)
+                ;;
+            *)
+                rm "$Tmp_Dir/tmp.png"
+                exit 0
+                ;;
+        esac
+    done
+
+}
+
+# printf "󰋱\n󰮐\n󰒉\n󰔚\n" | dmenu_icon_menu
+
+# printf "󰋱\n󰮐\n󰒉\n󰔚\n" | dmenu_icon_menu
+
+# printf "󰋱\n󰮐\n󱓼\n󰔚\n" | dmenu_icon_menu
+
+usage() {
+    printf "usage: screenshot <options>\n\n"
+    printf "options: \n"
+    printf "    --help, -h: print this help message\n"
+}
+
+for arg in "${@}"
+do
+    case "$arg" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+
+done
+
+if [[ ! -d $Tmp_Dir ]]; then
+    mkdir -p $Tmp_Dir
+fi
+
+if [[ ! -d $Screenshot_Dir ]]; then
+    mkdir -p $Screenshot_Dir
+fi
+
+main_menu

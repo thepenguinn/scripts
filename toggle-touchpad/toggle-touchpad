@@ -1,0 +1,22 @@
+#!/bin/bash
+
+Device_Id=9
+Notify_Id=22114
+
+## Just a sanity check! Making sure that the device is indeed a touchpad
+if ! xinput list --short | grep id=$Device_Id | grep "Touchpad" > /dev/null ; then
+    echo "Device id with $Device_Id is not seem to be a Touchpad"
+    exit 1
+fi
+
+device_stat=$(xinput list-props $Device_Id | grep "Device Enabled" | sed "s/\tDevice Enabled (\([0-9]*\)):\t*\([0-9]\)/\1 \2/")
+prop_id=${device_stat% *}
+prop_stat=${device_stat#* }
+
+if [[ $prop_stat == 0 ]]; then
+    xinput set-prop $Device_Id $prop_id 1
+    notify-send -r $Notify_Id -t 2000 "Touchpad" "Touchpad Enabled"
+else
+    xinput set-prop $Device_Id $prop_id 0
+    notify-send -r $Notify_Id -t 2000 "Touchpad" "Touchpad Disabled"
+fi

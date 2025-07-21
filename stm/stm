@@ -17,10 +17,17 @@ connect() {
 	printf "Waiting for Samsung A50s to connect...\n"
 	for i in $(seq 1 8)
 	do
-		af_ip_address=$(ip neigh | grep "${af_mac_addr}" | grep "\." | cut -d" " -f1)
-		# ip neigh could return a50s's ip address even after a50s got disconnected after
-		# once connecting, until resarting hotspot. Hence, af_ip_address could contain
-		# an invalid ip address, so dry running ssh with a 2 second timeout
+        if [[ -z ${AF_IP_ADDR} ]]; then
+            printf "Getting IP Address from MAC Address\n"
+            af_ip_address=$(ip neigh | grep "${af_mac_addr}" | grep "\." | cut -d" " -f1)
+        else
+            printf "Taking IP from AF_IP_ADDR: ${AF_IP_ADDR}\n"
+            af_ip_address=${AF_IP_ADDR}
+        fi
+
+        # ip neigh could return a50s's ip address even after a50s got disconnected after
+        # once connecting, until resarting hotspot. Hence, af_ip_address could contain
+        # an invalid ip address, so dry running ssh with a 2 second timeout
         if timeout 2 ssh -o StrictHostKeyChecking=no -p 8022 \
             $user_name@$af_ip_address echo > /dev/null 2>&1; then
 

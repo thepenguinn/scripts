@@ -35,6 +35,7 @@ chmod_and_link "${PWD}/a50scpy/a50scpy-headless" "${Bin_Dir}"
 chmod_and_link "${PWD}/qralarm/qralarm" "${Bin_Dir}"
 chmod_and_link "${PWD}/screenshot/screenshot" "${Bin_Dir}"
 chmod_and_link "${PWD}/toggle-touchpad/toggle-touchpad" "${Bin_Dir}"
+chmod_and_link "${PWD}/screenrecord/screenrecord" "${Bin_Dir}"
 
 # Checking whether we are on Android or not
 # This is how pfetch checks for Android

@@ -30,19 +30,74 @@ ask_confirm () {
 	read -r can
 	case $can in
 		[Yy][Ee][Ss])
-			return
+			return 0
 			;;
 		*)
-			exit 1
+			return 1
 			;;
 	esac
+}
+
+ask_captcha () {
+
+    local str=''
+    local spaced_str=''
+	local read_str
+    local char
+    local clean_char
+    local other_char=$'@#$%^&*()_+-={}[]\|/?><.,~ \t'
+    local tmp_other_str=''
+    local i=16
+    local j
+
+    local tmp=$'\n'
+
+    for ((j=0; j<$((${#other_char}-1)); j++));
+    do
+        tmp_other_str="${tmp_other_str}${other_char:$j:1}${tmp}"
+    done
+    tmp_other_str="${tmp_other_str}${other_char:$((${#other_char}-1)):1}"
+
+    printf "=======================================\n"
+    while true;
+    do
+        char=$(head -c 1 /dev/random 2>/dev/null) 2>/dev/null
+        clean_char=$(echo "$char" | tr -dc 'a-zA-Z0-9')
+
+        scrambled_str="${scrambled_str}${char}"
+
+        if [[ ! -z $clean_char ]]; then
+            str="${str}${clean_char}"
+            i=$((i-1))
+            printf "$clean_char"
+        else
+            cat <<< $(shuf <<< "$tmp_other_str" | head -n 1) | sed -z "s/\n$//" 2>/dev/null
+        fi
+
+        if [[ $i -eq 0 ]]; then
+            break;
+        fi
+    done
+    printf "\n=======================================\n"
+
+	printf "Retype above string only with [a-zA-Z0-9]: "
+
+	read -r read_str
+
+    if [[ "$read_str" == "$str" ]]; then
+        return 0
+    else
+        return 1
+    fi
+
 }
 
 toggle_pkgstate() {
 	local pkgname
 	local pkgstate
+    local line
 
-	while IFS='\n' read -r line
+    for line in "$@"
 	do
 		line=${line#*[}
 		pkgname=${line%%]*}
@@ -62,12 +117,53 @@ toggle_pkgstate() {
 		if [[ $pkgstate == "Disabled" ]]; then
             case $pkgname in
                 org.polymorphicshade.tubular)
-                    echo "Tubular: Ohh please, fuck off."
-                    continue
+                    echo "Tubular: Do you want to waste your time watching stupid videos?"
+                    echo "         Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
                     ;;
                 com.olx.southasia)
-                    echo "OLX: Ohh please, fuck off."
-                    continue
+                    echo "OLX: Do you want to mindlessly scroll on stupid things you would never buy?"
+                    echo "     Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
+                    ;;
+                in.amazon.mShop.android.shopping)
+                    echo "Amazon: Do you want to mindlessly scroll on stupid things you would never buy?"
+                    echo "        Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
+                    ;;
+                com.flipkart.android)
+                    echo "Flipkart: Do you want to mindlessly scroll on stupid things you would never buy?"
+                    echo "          Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
+                    ;;
+                com.flipkart.android)
+                    echo "Flipkart: Do you want to mindlessly scroll on stupid things you would never buy?"
+                    echo "          Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
+                    ;;
+                com.spotify.music)
+                    echo "Spotify: Don't already have a good set of music collection? Don't waste your time."
+                    echo "         Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
+                    ;;
+                com.linkedin.android)
+                    echo "LinkedIn: Just another form of social media. Get out of here"
+                    echo "         Do not do it."
+                    if ! ask_captcha ; then
+                        continue
+                    fi
                     ;;
                 *)
                     ;;
@@ -76,7 +172,7 @@ toggle_pkgstate() {
 		elif [[ $pkgstate == "Enabled" ]]; then
 			okcmd+=$(printf "pm disable-user ${pkgname};")
 		fi
-	done <<<"$@"
+	done
 	# Because calling rish for toggling pkg state will breaks the while loop for
 	# some reason
 	rish -c "$okcmd"

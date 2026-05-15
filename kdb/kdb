@@ -25,7 +25,7 @@ unset subcmd
 
 no_kindle() {
 	printf "Waiting for kindle to connect...\n"
-	for i in $(seq 1 8)
+	for i in $(seq 1 14)
 	do
 		Kindle_Ip_Adder=$(ip neigh | grep $Kindle_Mac_Addr | cut -d" " -f1)
 		# ip neigh could return kindle ip address even after kindle got disconnected after

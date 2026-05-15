@@ -9,8 +9,7 @@ fi
 
 Kindle_Mac_Addr="$KINDLE_MAC_ADDR"
 Kindle_Ip_Adder=$(ip neigh | grep $Kindle_Mac_Addr | cut -d" " -f1)
-# TODO: paths shouldn't end with /
-Kindle_Home_Dir="/mnt/us/documents/"
+Kindle_Home_Dir="/mnt/us/documents"
 Kindle_Scrn_Dir="/mnt/us/Koreader/screenshots"
 
 # the user need to export these env vars
@@ -115,7 +114,7 @@ set_push_points() {
 	if [[ ${!#} =~ ^/ ]]; then
 		Target="${!#}"
 	else
-		Target="$Kindle_Home_Dir${!#}"
+		Target="$Kindle_Home_Dir/${!#}"
 	fi
 }
 
@@ -126,7 +125,7 @@ set_pull_points() {
 		if [[ ${!i} =~ ^/ ]]; then
 			Source+=" :\"${!i}\""
 		else
-			Source+=" :\"$Kindle_Home_Dir${!i}\""
+			Source+=" :\"$Kindle_Home_Dir/${!i}\""
 		fi
 	done
 	[[ ${!#} =~ ^-h|--help$ ]] && usage

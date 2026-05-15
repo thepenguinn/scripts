@@ -88,6 +88,16 @@ create_utils_general_window () {
     fi
 }
 
+create_utilsterm_general_window () {
+
+    create_utils_general_window
+
+    if ! tmux has-session -t utilsterm 2>/dev/null; then
+        # there is no utilsterm session
+        tmux new-session -d -t utils:general -s utilsterm
+    fi
+}
+
 create_session () {
 
     local session="${1}"
@@ -145,9 +155,15 @@ create_session_from_dir () {
 
     session_name=$(basename "$session" | tr " " "_")
 
-    parent_from_home=$(sed "s#^${HOME}/##" <<<"$session")
-    parent_from_home=${parent_from_home%/*}
-    suffix_hash=$(tr "/" "." <<<"$parent_from_home")
+    parent_from_home=$(sed "s#^${HOME}##" <<<"$session")
+    if [[ ${parent_from_home%/*} == "" ]]; then
+        suffix_hash=$(tr "/" "." <<<"${parent_from_home#/}")
+        parent_from_home="."
+    else
+        parent_from_home=${parent_from_home%/*}
+        parent_from_home=${parent_from_home#/}
+        suffix_hash=$(tr "/" "." <<<"${parent_from_home}")
+    fi
 
     if [[ ! -z "${Session_Suffix_Table[${suffix_hash}]}" ]]; then
         session_name="${session_name}-${Session_Suffix_Table[${suffix_hash}]}"
@@ -206,6 +222,10 @@ main () {
             utils:general)
                 create_utils_general_window
                 last_creation="utils:general"
+                ;;
+            utilsterm:general)
+                create_utilsterm_general_window
+                last_creation="utilsterm:general"
                 ;;
             general)
                 create_general_session

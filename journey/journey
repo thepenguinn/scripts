@@ -1,5 +1,8 @@
 #!/bin/bash
 
+Journey_Dir="${HOME}/journey"
+Cd_Back_Dir="."
+
 usage () {
     printf "journey <file base path>\n"
 }
@@ -10,6 +13,27 @@ File_Base_Path="${1}"
 if [[ -z "$File_Base_Path" ]]; then
     usage
     exit 1
+else
+    case "$File_Base_Path" in
+        today)
+            year=$(date +"%Y")
+            month=$(date +"%B" | tr '[:upper:]' '[:lower:]')
+            day=$(date +"%d")
+
+            Cd_Back_Dir="$(pwd)"
+
+            dir="${Journey_Dir}/${year}/${month}"
+
+            if [[ ! -d "$dir" ]]; then
+                mkdir -p "$dir"
+            fi
+
+            cd "${dir}"
+            File_Base_Path="${day}"
+            ;;
+        *)
+            ;;
+    esac
 fi
 
 if [[ "$File_Base_Path" =~ .*.gpg ]]; then
@@ -42,3 +66,5 @@ if gpg -d -o "${File_Base_Path}.norg" "${File_Base_Path}.norg.gpg"; then
     nvim "+set spell" "+TZAtaraxis" "${File_Base_Path}.norg"
     gpg -e -r "${User}" "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg" && rm "${File_Base_Path}.norg.gpg.bak"
 fi
+
+cd "$Cd_Back_Dir"

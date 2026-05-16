@@ -52,7 +52,10 @@ get_pkglabel_from_file () {
 		fi
 	done
 
-	get_pkglabel $got_nothing
+    if [[ ! -z "$get_pkglabel" ]]; then
+        get_pkglabel $got_nothing
+    fi
+
 }
 
 rm_non_pkgs() {
@@ -90,7 +93,7 @@ get_nonlabeledpkgs() {
 	fi
 
 	pkg_list+="\n$pkg_info"
-	printf "$pkg_list" | awk -F "@" '{print $1 " --> [" $3 "] [" $4 "]"}'
+	printf "$pkg_list" | sed '/^$/d' | awk -F "@" '{print $1 " --> [" $3 "] [" $4 "]"}'
 }
 
 get_nonlabeledpkgs

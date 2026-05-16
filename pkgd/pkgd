@@ -97,7 +97,8 @@ toggle_pkgstate() {
 	local pkgstate
     local line
 
-    for line in "$@"
+    IFS=$'\n'
+    for line in $@
 	do
 		line=${line#*[}
 		pkgname=${line%%]*}

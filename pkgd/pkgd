@@ -61,7 +61,7 @@ ask_captcha () {
     printf "=======================================\n"
     while true;
     do
-        char=$(head -c 1 /dev/random 2>/dev/null) 2>/dev/null
+        char=$(head -c 1 /dev/random | tr -d '\0')
         clean_char=$(echo "$char" | tr -dc 'a-zA-Z0-9')
 
         scrambled_str="${scrambled_str}${char}"

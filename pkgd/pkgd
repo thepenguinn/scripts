@@ -145,8 +145,8 @@ toggle_pkgstate() {
                         continue
                     fi
                     ;;
-                com.flipkart.android)
-                    echo "Flipkart: Do you want to mindlessly scroll on stupid things you would never buy?"
+                com.pinterest)
+                    echo "Pinterest: Do you want to mindlessly scroll on stupid things that you call inspiration?"
                     echo "          Do not do it."
                     if ! ask_captcha ; then
                         continue

@@ -16,6 +16,7 @@ get_pkglabel() {
 	local pkgname
 	local pkglabel
 	local pkgstate
+    local line
 
 	for line in "$@"
 	do
@@ -28,6 +29,7 @@ get_pkglabel() {
 		[[ -z $pkglabel ]] && pkglabel="No Label"
 		pkg_info+="$pkglabel@$pkgpath@$pkgname@$pkgstate\n"
 	done
+
 }
 
 get_pkglabel_from_file () {
@@ -36,6 +38,7 @@ get_pkglabel_from_file () {
 	local pkglabel
 	local pkgstate
 	local got_nothing=""
+    local line
 
 	for line in "$@"
 	do
@@ -52,8 +55,8 @@ get_pkglabel_from_file () {
 		fi
 	done
 
-    if [[ ! -z "$get_pkglabel" ]]; then
-        get_pkglabel $got_nothing
+    if [[ ! -z "$got_nothing" ]]; then
+        get_pkglabel $(printf $got_nothing)
     fi
 
 }
